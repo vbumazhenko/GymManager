@@ -57,7 +57,7 @@ public class ChatBot extends TelegramLongPollingBot {
         User user;
         BotState state;
 
-        if (!userRec.isPresent()) {
+        if (userRec.isEmpty()) {
             state = BotState.getInitialState();
             user = new User();
             user.setChatId(chatId);

@@ -8,7 +8,11 @@ public class WorkoutType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+
+    @Column(length = 2)
     private String code;
+
+    @Column(length = 100)
     private String name;
     private double duration;
 

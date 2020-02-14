@@ -11,9 +11,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     private String name;
+
+    @Column(length = 20)
     private String phone;
     private Long chatId;
-    private int tgId;
 
     @ManyToOne
     @JoinColumn
@@ -78,14 +79,6 @@ public class User {
 
     public void setChatId(Long chatId) {
         this.chatId = chatId;
-    }
-
-    public int getTgId() {
-        return tgId;
-    }
-
-    public void setTgId(int tgId) {
-        this.tgId = tgId;
     }
 
     public int getLastMessageId() {

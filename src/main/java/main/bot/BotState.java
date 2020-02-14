@@ -350,11 +350,11 @@ public enum BotState {
                     goingCount++;
                 }
                 text.append("[").append(subscription.getUser().getName()).append("](")
-                        .append("tg://user?id=").append(subscription.getUser().getTgId()).append(")\n");
+                        .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
                 if (subscription.getCount() > 1) {
                     text.append("➕ ").append(subscription.getCount() - 1).append(", от [")
                             .append(subscription.getUser().getName()).append("](")
-                            .append("tg://user?id=").append(subscription.getUser().getTgId()).append(")\n");
+                            .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
                     addCount += subscription.getCount() - 1;
                 }
             }
@@ -457,7 +457,7 @@ public enum BotState {
                     context.getUser()
             );
 
-            if (!subscriptionOptional.isPresent()) {
+            if (subscriptionOptional.isEmpty()) {
                 Subscription subscribe = new Subscription();
                 subscribe.setDate(new java.sql.Date(date.getTime()));
                 subscribe.setTime(new java.sql.Time(time.getTime()));
