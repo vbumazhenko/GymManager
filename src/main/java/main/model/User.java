@@ -3,6 +3,7 @@ package main.model;
 import main.bot.BotState;
 
 import javax.persistence.*;
+import java.sql.Date;
 
 @Entity
 public class User {
@@ -24,6 +25,7 @@ public class User {
     private BotState state;
     private boolean isAdmin;
     private int lastMessageId;
+    private Date regDate;
 
     public int getId() {
         return id;
@@ -87,6 +89,14 @@ public class User {
 
     public void setLastMessageId(int lastMessageId) {
         this.lastMessageId = lastMessageId;
+    }
+
+    public Date getRegDate() {
+        return regDate;
+    }
+
+    public void setRegDate(Date regDate) {
+        this.regDate = regDate;
     }
 
 }

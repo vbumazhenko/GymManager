@@ -1,10 +1,12 @@
 package main.bot;
 
+import java.util.Date;
+
 public class ScheduleDay {
 
     private int id;
     private int weekday;
-    private String time;
+    private Date time;
     private String workoutCode;
     private String workoutName;
     private int count;
@@ -27,11 +29,11 @@ public class ScheduleDay {
         this.weekday = weekday;
     }
 
-    public String getTime() {
+    public Date getTime() {
         return time;
     }
 
-    public void setTime(String time) {
+    public void setTime(Date time) {
         this.time = time;
     }
 

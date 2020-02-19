@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.sql.Date;
 import java.util.*;
 
 @Component
@@ -63,7 +64,7 @@ public class ChatBot extends TelegramLongPollingBot {
             user.setChatId(chatId);
             user.setState(state);
             user.setDefaultGym(gymService.getDefaultGym());
-            user.setTgId(update.getMessage().getFrom().getId());
+            user.setRegDate(new Date(new java.util.Date().getTime()));
             userRepo.save(user);
 
             context.of(this, user, update);

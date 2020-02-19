@@ -51,7 +51,7 @@ public class ScheduleService {
                 "ORDER BY t.time";
 
         queryStr = String.format(queryStr,
-                context.getUser().getId(),
+                context.getCurrentUser().getId(),
                 Utils.dateToString(context.getDate()),
                 context.getGym().getId(),
                 Utils.dayOfWeek(context.getDate())
@@ -68,7 +68,7 @@ public class ScheduleService {
                 ScheduleDay scheduleDay = new ScheduleDay();
                 scheduleDay.setId(resultSet.getInt("id"));
                 scheduleDay.setWeekday(resultSet.getInt("weekday"));
-                scheduleDay.setTime(resultSet.getString("time"));
+                scheduleDay.setTime(Utils.stringToTime(resultSet.getString("time")));
                 scheduleDay.setWorkoutCode(resultSet.getString("workoutCode"));
                 scheduleDay.setWorkoutName(resultSet.getString("workoutName"));
                 scheduleDay.setCount(resultSet.getInt("count"));

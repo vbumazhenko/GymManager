@@ -4,8 +4,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Utils {
 
@@ -27,9 +25,21 @@ public class Utils {
 
     }
 
-    public static String dateToLocalString(Date date) {
+    public static Date stringToTime(String timeStr) {
 
-        return new SimpleDateFormat("dd.MM.yyyy").format(date);
+        Date time = null;
+        try {
+            time = new SimpleDateFormat("HH:mm:ss").parse(timeStr);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return time;
+
+    }
+
+    public static String timeToString(Date time) {
+
+        return new SimpleDateFormat("H:mm").format(time);
 
     }
 
@@ -38,71 +48,6 @@ public class Utils {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         return 7 - (8 - calendar.get(Calendar.DAY_OF_WEEK))%7; // Делаем первым днем понедельник, а не воскресенье
-
-    }
-
-    public static String toShortTime(String timeStr) {
-
-        Date date = null;
-        try {
-            date = new SimpleDateFormat("HH:mm:ss").parse(timeStr);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        return new SimpleDateFormat("H:mm").format(date);
-
-    }
-
-    public static String toLongTime(String timeStr) {
-
-        Date date = null;
-        try {
-            date = new SimpleDateFormat("H:mm").parse(timeStr);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        return new SimpleDateFormat("HH:mm:ss").format(date);
-
-    }
-
-    public static Date stringToTime(String timeStr) {
-
-        Date date = null;
-        try {
-            date = new SimpleDateFormat("HH:mm:ss").parse(timeStr);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        return date;
-
-    }
-
-    public static String timeToString(Date time) {
-
-        return new SimpleDateFormat("HH:mm").format(time);
-
-    }
-
-    public static Map<String, String> callbackDataToMap(String callbackData) {
-
-        /**
-         * Строка callbackData имеет следующий формат:
-         * "имяКоманды|ключ1=значение1;ключ2=значение2;...ключN=значениеN"
-         * Команда вместе с ключами и значениями помещаются в Map
-         */
-
-        Map<String, String> map = new HashMap<>();
-        map.put("command", "");
-
-        String[] args = callbackData.split("\\|", 2);
-        map.put("command", args[0]);
-
-        args = args[1].split(";");
-        for (String arg:args) {
-            String[] keys = arg.split("=", 2);
-            map.put(keys[0], keys[1]);
-        }
-        return map;
 
     }
 

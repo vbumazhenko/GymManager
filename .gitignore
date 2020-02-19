@@ -4,6 +4,7 @@ out/
 *.iml
 target/
 test/
+others/
 *.properties
 
 # Compiled class file

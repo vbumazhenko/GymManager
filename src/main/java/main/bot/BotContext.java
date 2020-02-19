@@ -32,9 +32,8 @@ public class BotContext {
     @Autowired
     protected GymRepo gymRepo;
 
-
     private ChatBot bot;
-    private User user;
+    private User currentUser;
     private Update update;
     private int messageId;
     private String callbackData;
@@ -43,31 +42,37 @@ public class BotContext {
     private Schedule schedule;
     private boolean notSure;
     private int addCount;
+    private User user;
+    private BotState state;
+    private String from;
 
-    public void of(ChatBot bot, User user, Update update) {
+    public void of(ChatBot bot, User currentUser, Update update) {
 
         this.bot = bot;
-        this.user = user;
+        this.currentUser = currentUser;
         this.update = update;
         messageId = 0;
         callbackData = "";
-        schedule = new Schedule();
+        schedule = null;
         date = new Date();
-        gym = user.getDefaultGym();
+        gym = currentUser.getDefaultGym();
         notSure = false;
         addCount = 0;
+        user = null;
+        state = null;
+        from = "";
 
         if (update.hasMessage()) {
-            if (update.getMessage().getMessageId() > user.getLastMessageId()) {
-                user.setLastMessageId(update.getMessage().getMessageId());
+            if (update.getMessage().getMessageId() > currentUser.getLastMessageId()) {
+                currentUser.setLastMessageId(update.getMessage().getMessageId());
             }
         }
 
         if (update.hasCallbackQuery()) {
 
             messageId = update.getCallbackQuery().getMessage().getMessageId();
-            if (messageId > user.getLastMessageId()) {
-                user.setLastMessageId(messageId);
+            if (messageId > currentUser.getLastMessageId()) {
+                currentUser.setLastMessageId(messageId);
             }
 
             String[] args = update.getCallbackQuery().getData().split("\\|", 2);
@@ -92,8 +97,19 @@ public class BotContext {
                             break;
                         case "c":
                             addCount = Integer.parseInt(keys[1]);
+                            break;
+                        case "uId":
+                            userRepo.findById(Integer.parseInt(keys[1])).ifPresent(value -> user = value);
+                            break;
+                        case "st":
+                            state = BotState.valueOf(keys[1]);
+                            break;
+                        case "fr":
+                            from = keys[1];
                     }
                 }
+            } else {
+                callbackData = update.getCallbackQuery().getData();
             }
         }
 
@@ -107,8 +123,8 @@ public class BotContext {
         return bot;
     }
 
-    public User getUser() {
-        return user;
+    public User getCurrentUser() {
+        return currentUser;
     }
 
     public Update getUpdate() {
@@ -141,6 +157,18 @@ public class BotContext {
 
     public int getAddCount() {
         return addCount;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public BotState getState() {
+        return state;
+    }
+
+    public String getFrom() {
+        return from;
     }
 
 }
