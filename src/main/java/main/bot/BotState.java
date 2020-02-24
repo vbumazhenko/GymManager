@@ -1,7 +1,9 @@
 package main.bot;
 
+import main.model.Gym;
 import main.model.Subscription;
 import main.model.User;
+import main.repository.UserRepo;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -508,18 +510,25 @@ public enum BotState {
 
             if (context.getUpdate().hasMessage()) {  // Обработка сообщения типа Message
 
-                if (context.getUpdate().getMessage().getText().equals("График тренировок")) {
-                    showScheduleOnDate(context);
-                } else if (context.getUpdate().getMessage().getText().equals("Заявки")) {
-                    showWaitingUsers(context);
-                } else if (context.getUpdate().getMessage().getText().equals("Все участники")) {
-                    showUserList(context);
-                } else if (context.getUpdate().getMessage().getText().equals("Заблокированные")) {
-                    showBlockedUsers(context);
-                } else if (context.getUpdate().getMessage().getText().equals("Сменить клуб")) {
-
-                } else {
-                    showMainMenu(context, context.getCurrentUser());
+                switch (context.getUpdate().getMessage().getText()) {
+                    case "График тренировок":
+                        showScheduleOnDate(context);
+                        break;
+                    case "Заявки":
+                        showWaitingUsers(context);
+                        break;
+                    case "Все участники":
+                        showUserList(context);
+                        break;
+                    case "Заблокированные":
+                        showBlockedUsers(context);
+                        break;
+                    case "Изменить клуб":
+                        showGymList(context);
+                        break;
+                    default:
+                        showMainMenu(context, context.getCurrentUser());
+                        break;
                 }
 
             } else if (context.getUpdate().hasCallbackQuery()) {
@@ -546,15 +555,14 @@ public enum BotState {
                             changeState(context);
                             showUserData(context);
                             break;
-//                        case "unSubscribe":
-//                            if (unSubscribeUser(context)) {
-//                                showSubscriptionsOnTime(context);
-//                            }
-//                            break;
-//                        case "addSubscribe":
-//                            if (addSubscribe(context)) {
-//                                showSubscriptionsOnTime(context);
-//                            }
+                        case "showGymList":
+                            showGymList(context);
+                            break;
+                        case "chGym":
+                            if (changeGym(context)) {
+                                showGymList(context);
+                            }
+                            break;
                     }
 
                 }
@@ -670,7 +678,7 @@ public enum BotState {
             List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
             List<InlineKeyboardButton> rowInline;
 
-            List<User> userList = context.userRepo.findAll();
+            List<User> userList = context.userRepo.findAllByDefaultGym(context.getCurrentUser().getDefaultGym());
             userList = userList.stream()
                     .filter(user -> user.getState().equals(BotState.WAITING))
                     .sorted(Comparator.comparing(User::getName))
@@ -682,7 +690,7 @@ public enum BotState {
                 InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
                 keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
                 keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
-                        + ";fr=showWaitingUsers");
+                        + ";ulm=showWaitingUsers");
                 rowInline.add(keyboardButton);
                 keyboardInline.add(rowInline);
                 count++;
@@ -704,7 +712,7 @@ public enum BotState {
             List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
             List<InlineKeyboardButton> rowInline;
 
-            List<User> userList = context.userRepo.findAll();
+            List<User> userList = context.userRepo.findAllByDefaultGym(context.getCurrentUser().getDefaultGym());
             userList = userList.stream()
                     .filter(user -> user.getState().equals(BotState.ACTIVE)
                             || user.getState().equals(BotState.ADMIN))
@@ -723,7 +731,7 @@ public enum BotState {
                 InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
                 keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
                 keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
-                        + ";fr=showUserList");
+                        + ";ulm=showUserList");
                 rowInline.add(keyboardButton);
                 keyboardInline.add(rowInline);
                 count++;
@@ -733,7 +741,7 @@ public enum BotState {
             replyKeyboard.setKeyboard(keyboardInline);
 
             String text = context.getCurrentUser().getDefaultGym().getName() + "\n" +
-                    "Список всех участников (" + count + "):";
+                    "Все участники (" + count + "):";
 
             showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
                     text, replyKeyboard);
@@ -745,7 +753,7 @@ public enum BotState {
             List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
             List<InlineKeyboardButton> rowInline;
 
-            List<User> userList = context.userRepo.findAll();
+            List<User> userList = context.userRepo.findAllByDefaultGym(context.getCurrentUser().getDefaultGym());
             userList = userList.stream()
                     .filter(user -> user.getState().equals(BotState.BLOCKED))
                     .sorted(Comparator.comparing(User::getName))
@@ -757,7 +765,7 @@ public enum BotState {
                 InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
                 keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
                 keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
-                        + ";fr=showBlockedUsers");
+                        + ";ulm=showBlockedUsers");
                 rowInline.add(keyboardButton);
                 keyboardInline.add(rowInline);
                 count++;
@@ -767,7 +775,7 @@ public enum BotState {
             replyKeyboard.setKeyboard(keyboardInline);
 
             String text = context.getCurrentUser().getDefaultGym().getName() + "\n" +
-                    "Список заблокированных (" + count + "):";
+                    "Заблокированные (" + count + "):";
 
             showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
                     text, replyKeyboard);
@@ -797,30 +805,30 @@ public enum BotState {
                 if (user.getState().equals(BotState.WAITING)) {
                     rowInline = new ArrayList<>();
                     keyboardButton = new InlineKeyboardButton();
-                    keyboardButton.setText("✅ Добавить");
+                    keyboardButton.setText("Добавить");
                     keyboardButton.setCallbackData("chState|uId=" + user.getId()
                             + ";st=" + BotState.ACTIVE
-                            + ";fr=" + context.getFrom());
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 }
                 if (user.getState().equals(BotState.ACTIVE) || user.getState().equals(BotState.WAITING)) {
                     rowInline = new ArrayList<>();
                     keyboardButton = new InlineKeyboardButton();
-                    keyboardButton.setText("❌ Заблокировать");
+                    keyboardButton.setText("Заблокировать");
                     keyboardButton.setCallbackData("chState|uId=" + user.getId()
                             + ";st=" + BotState.BLOCKED
-                            + ";fr=" + context.getFrom());
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 }
                 if (user.getState().equals(BotState.BLOCKED)) {
                     rowInline = new ArrayList<>();
                     keyboardButton = new InlineKeyboardButton();
-                    keyboardButton.setText("✅ Разблокировать");
+                    keyboardButton.setText("Разблокировать");
                     keyboardButton.setCallbackData("chState|uId=" + user.getId()
                             + ";st=" + BotState.ACTIVE
-                            + ";fr=" + context.getFrom());
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 }
@@ -830,7 +838,8 @@ public enum BotState {
                     rowInline = new ArrayList<>();
                     keyboardButton = new InlineKeyboardButton();
                     keyboardButton.setText("Изменить клуб");
-                    keyboardButton.setCallbackData("showGym|uId=" + user.getId());
+                    keyboardButton.setCallbackData("showGymList|uId=" + user.getId()
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 }
@@ -842,7 +851,7 @@ public enum BotState {
                     keyboardButton.setText("Добавить в администраторы");
                     keyboardButton.setCallbackData("chState|uId=" + user.getId()
                             + ";st=" + BotState.ADMIN
-                            + ";fr=" + context.getFrom());
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 } else if (user.getState().equals(BotState.ADMIN)) {
@@ -851,7 +860,7 @@ public enum BotState {
                     keyboardButton.setText("Удалить из администраторов");
                     keyboardButton.setCallbackData("chState|uId=" + user.getId()
                             + ";st=" + BotState.ACTIVE
-                            + ";fr=" + context.getFrom());
+                            + ";ulm=" + context.getUserListMode());
                     rowInline.add(keyboardButton);
                     keyboardInline.add(rowInline);
                 }
@@ -862,7 +871,7 @@ public enum BotState {
             rowInline = new ArrayList<>();
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("« Назад");
-            keyboardButton.setCallbackData(context.getFrom());
+            keyboardButton.setCallbackData(context.getUserListMode());
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
 
@@ -880,6 +889,79 @@ public enum BotState {
             user.setState(context.getState());
             user.setAdmin(context.getState().equals(BotState.ADMIN));
             context.userRepo.save(user);
+
+        }
+
+        private void showGymList(BotContext context) {
+
+            String headerText = "Изменить текущий клуб";
+            if (context.getUser().getId() == context.getCurrentUser().getId()) {
+                headerText += ":";
+            } else {
+                headerText += " для\n"
+                        + "[" + context.getUser().getName() + "](tg://user?id=" + context.getUser().getChatId()+ ")";
+            }
+
+            List<Gym> gymList = context.gymRepo.findAll();
+
+            List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
+            List<InlineKeyboardButton> rowInline;
+
+            for (Gym gym : gymList) {
+
+                StringBuilder text = new StringBuilder();
+                if (context.getUser().getDefaultGym().getId() == gym.getId()) {
+                    text.append("✅ ");
+                }
+                text.append(gym.getName());
+
+                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
+                keyboardButton.setText(text.toString());
+                keyboardButton.setCallbackData("chGym|uId=" + context.getUser().getId()
+                        + ";gId=" + gym.getId()
+                        + ";ulm=" + context.getUserListMode());
+
+                rowInline = new ArrayList<>();
+                rowInline.add(keyboardButton);
+                keyboardInline.add(rowInline);
+
+            }
+
+            // Назад
+            if (context.getUser().getId() != context.getCurrentUser().getId()) {
+                rowInline = new ArrayList<>();
+                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
+                keyboardButton.setText("« Назад");
+                keyboardButton.setCallbackData("showUserData|uId=" + context.getUser().getId()
+                        + ";ulm=" + context.getUserListMode());
+                rowInline.add(keyboardButton);
+                keyboardInline.add(rowInline);
+            }
+
+            InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
+            replyKeyboard.setKeyboard(keyboardInline);
+
+            showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
+                    headerText, replyKeyboard);
+
+        }
+
+        private boolean changeGym(BotContext context) {
+
+            boolean result = false;
+
+            if (context.getUser().getId() == context.getCurrentUser().getId()) {
+                context.setUser(context.getCurrentUser());
+            }
+            User user = context.getUser();
+
+            if (user.getDefaultGym().getId() != context.getGym().getId()) {
+                user.setDefaultGym(context.getGym());
+                context.userRepo.save(user);
+                result = true;
+            }
+
+            return result;
 
         }
 
@@ -945,7 +1027,7 @@ public enum BotState {
             keyboardRowList.add(keyboardRow);
 
             keyboardRow = new KeyboardRow();
-            keyboardRow.add("Сменить клуб");
+            keyboardRow.add("Изменить клуб");
             keyboardRowList.add(keyboardRow);
         }
 

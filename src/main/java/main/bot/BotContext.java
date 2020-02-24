@@ -44,7 +44,7 @@ public class BotContext {
     private int addCount;
     private User user;
     private BotState state;
-    private String from;
+    private String userListMode;
 
     public void of(ChatBot bot, User currentUser, Update update) {
 
@@ -58,9 +58,9 @@ public class BotContext {
         gym = currentUser.getDefaultGym();
         notSure = false;
         addCount = 0;
-        user = null;
+        user = currentUser;
         state = null;
-        from = "";
+        userListMode = "";
 
         if (update.hasMessage()) {
             if (update.getMessage().getMessageId() > currentUser.getLastMessageId()) {
@@ -104,8 +104,8 @@ public class BotContext {
                         case "st":
                             state = BotState.valueOf(keys[1]);
                             break;
-                        case "fr":
-                            from = keys[1];
+                        case "ulm":
+                            userListMode = keys[1];
                     }
                 }
             } else {
@@ -163,12 +163,16 @@ public class BotContext {
         return user;
     }
 
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     public BotState getState() {
         return state;
     }
 
-    public String getFrom() {
-        return from;
+    public String getUserListMode() {
+        return userListMode;
     }
 
 }

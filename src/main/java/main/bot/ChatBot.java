@@ -55,24 +55,24 @@ public class ChatBot extends TelegramLongPollingBot {
 
         Optional<User> userRec = userRepo.findByChatId(chatId);
 
-        User user;
+        User currentUser;
         BotState state;
 
         if (userRec.isEmpty()) {
             state = BotState.getInitialState();
-            user = new User();
-            user.setChatId(chatId);
-            user.setState(state);
-            user.setDefaultGym(gymService.getDefaultGym());
-            user.setRegDate(new Date(new java.util.Date().getTime()));
-            userRepo.save(user);
+            currentUser = new User();
+            currentUser.setChatId(chatId);
+            currentUser.setState(state);
+            currentUser.setDefaultGym(gymService.getDefaultGym());
+            currentUser.setRegDate(new Date(new java.util.Date().getTime()));
+            userRepo.save(currentUser);
 
-            context.of(this, user, update);
+            context.of(this, currentUser, update);
             state.enter(context);
         } else {
-            user = userRec.get();
-            context.of(this, user, update);
-            state = user.getState();
+            currentUser = userRec.get();
+            context.of(this, currentUser, update);
+            state = currentUser.getState();
         }
 
         state.handleInput(context);
@@ -82,8 +82,8 @@ public class ChatBot extends TelegramLongPollingBot {
             state.enter(context);
         } while (!state.isInputNeeded());
 
-        user.setState(state);
-        userRepo.save(user);
+        currentUser.setState(state);
+        userRepo.save(currentUser);
 
     }
 
