@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -116,7 +117,6 @@ public enum BotState {
         }
     },
     ACTIVE {
-
         @Override
         public void enter(BotContext context) {
 
@@ -486,7 +486,22 @@ public enum BotState {
 
     },
     BLOCKED {
+        @Override
+        public void handleInput(BotContext context) {
 
+            // Для заблокированных пользователей убираем главное меню
+            SendMessage message = new SendMessage();
+            message.setChatId(context.getCurrentUser().getChatId());
+            message.setText("Вы не являетесь участником клуба.");
+            message.setReplyMarkup(new ReplyKeyboardRemove());
+
+            try {
+                context.getBot().execute(message);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+
+        }
     },
     ADMIN {
 
@@ -513,6 +528,9 @@ public enum BotState {
                 switch (context.getUpdate().getMessage().getText()) {
                     case "График тренировок":
                         showScheduleOnDate(context);
+                        break;
+                    case "Редактировать график":
+//                        showScheduleOnDate(context);
                         break;
                     case "Заявки":
                         showWaitingUsers(context);
@@ -568,22 +586,6 @@ public enum BotState {
                 }
 
             }
-//            if (context.getUpdate().hasMessage()) {  // Обработка сообщения типа Message
-//
-//                String inputText = context.getUpdate().getMessage().getText();
-//                if (inputText.equals("Да")) {
-//
-//                    List<User> userList = context.userRepo.findAllByState(BotState.WAITING);
-//                    for (User user:userList) {
-//                        user.setState(BotState.SUBSCRIPTION);
-//                        context.userRepo.save(user);
-//                        sendMessage(context, "Ваша заявка одобрена. Добро пожаловать в наш клуб!", user.getChatId());
-//                        BotState.SUBSCRIPTION.showMainMenu(context.getBot(), user.getChatId());
-//                    }
-//
-//                }
-//
-//            }
 
         }
 
@@ -886,9 +888,19 @@ public enum BotState {
         private void changeState(BotContext context) {
 
             User user = context.getUser();
+            BotState previousState = user.getState();
             user.setState(context.getState());
             user.setAdmin(context.getState().equals(BotState.ADMIN));
             context.userRepo.save(user);
+
+            if (previousState.equals(BotState.WAITING) && context.getState().equals(BotState.ACTIVE)) {
+                sendMessage(context, "Ваша заявка одобрена. Добро пожаловать в наш клуб!", user.getChatId());
+                showMainMenu(context, user);
+            }
+            if (previousState.equals(BotState.WAITING) && context.getState().equals(BotState.BLOCKED)) {
+                sendMessage(context, "Ваша заявка отклонена. Обратитесь к администратору.", user.getChatId());
+            }
+
 
         }
 
@@ -899,7 +911,7 @@ public enum BotState {
                 headerText += ":";
             } else {
                 headerText += " для\n"
-                        + "[" + context.getUser().getName() + "](tg://user?id=" + context.getUser().getChatId()+ ")";
+                        + "[" + context.getUser().getName() + "](tg://user?id=" + context.getUser().getChatId() + ")";
             }
 
             List<Gym> gymList = context.gymRepo.findAll();
@@ -1015,6 +1027,7 @@ public enum BotState {
     public void showMainMenu(BotContext context, User user) {
 
         List<KeyboardRow> keyboardRowList = new ArrayList<>();
+
         KeyboardRow keyboardRow = new KeyboardRow();
         keyboardRow.add("График тренировок");
         keyboardRowList.add(keyboardRow);
@@ -1028,6 +1041,10 @@ public enum BotState {
 
             keyboardRow = new KeyboardRow();
             keyboardRow.add("Изменить клуб");
+            keyboardRowList.add(keyboardRow);
+
+            keyboardRow = new KeyboardRow();
+            keyboardRow.add("Редактировать график");
             keyboardRowList.add(keyboardRow);
         }
 
