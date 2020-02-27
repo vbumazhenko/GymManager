@@ -17,4 +17,6 @@ public interface UserRepo extends CrudRepository<User, Integer> {
 
     List<User> findAllByDefaultGym(Gym gym);
 
+    List<User> findAll();
+
 }

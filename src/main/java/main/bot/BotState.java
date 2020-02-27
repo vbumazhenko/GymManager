@@ -680,7 +680,7 @@ public enum BotState {
             List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
             List<InlineKeyboardButton> rowInline;
 
-            List<User> userList = context.userRepo.findAllByDefaultGym(context.getCurrentUser().getDefaultGym());
+            List<User> userList = context.userRepo.findAll();
             userList = userList.stream()
                     .filter(user -> user.getState().equals(BotState.WAITING))
                     .sorted(Comparator.comparing(User::getName))
