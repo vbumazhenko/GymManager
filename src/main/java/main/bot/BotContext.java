@@ -45,6 +45,7 @@ public class BotContext {
     private User user;
     private BotState state;
     private String userListMode;
+    private String mainMenuHeader;
 
     public void of(ChatBot bot, User currentUser, Update update) {
 
@@ -61,6 +62,7 @@ public class BotContext {
         user = currentUser;
         state = null;
         userListMode = "";
+        mainMenuHeader = "Выберите действие";
 
         if (update.hasMessage()) {
             if (update.getMessage().getMessageId() > currentUser.getLastMessageId()) {
@@ -71,7 +73,7 @@ public class BotContext {
         if (update.hasCallbackQuery()) {
 
             messageId = update.getCallbackQuery().getMessage().getMessageId();
-            if (messageId > currentUser.getLastMessageId()) {
+            if (currentUser.getLastMessageId() > 0 && currentUser.getLastMessageId() < messageId) {
                 currentUser.setLastMessageId(messageId);
             }
 
@@ -147,6 +149,10 @@ public class BotContext {
         return gym;
     }
 
+    public void setGym(Gym gym) {
+        this.gym = gym;
+    }
+
     public Schedule getSchedule() {
         return schedule;
     }
@@ -173,6 +179,14 @@ public class BotContext {
 
     public String getUserListMode() {
         return userListMode;
+    }
+
+    public String getMainMenuHeader() {
+        return mainMenuHeader;
+    }
+
+    public void setMainMenuHeader(String mainMenuHeader) {
+        this.mainMenuHeader = mainMenuHeader;
     }
 
 }

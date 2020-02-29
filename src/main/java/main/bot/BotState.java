@@ -140,7 +140,7 @@ public enum BotState {
                 if (context.getUpdate().getMessage().getText().equals("График тренировок")) {
                     showScheduleOnDate(context);
                 } else {
-                    showMainMenu(context, context.getCurrentUser());
+                    showMainMenu(context);
                 }
 
             } else if (context.getUpdate().hasCallbackQuery()) {
@@ -176,88 +176,6 @@ public enum BotState {
 
         }
 
-        private void showScheduleOnDate(BotContext context) {
-
-            String headerText = "График на *" + new SimpleDateFormat("EEEE").format(context.getDate()) + "*\n"
-                    + new SimpleDateFormat("d MMMM yyyy").format(context.getDate()) + " г.";
-
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(context.getDate());
-
-            List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
-
-            // Кнопки выбора времени занятия
-            List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
-
-            int colCount = 2;
-            List<InlineKeyboardButton> rowInline = new ArrayList<>();
-            for (ScheduleDay scheduleDay : scheduleDayList) {
-
-                if (rowInline.size() >= colCount) {
-                    keyboardInline.add(rowInline);
-                    rowInline = new ArrayList<>();
-                }
-                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
-
-                StringBuilder text = new StringBuilder();
-                if (scheduleDay.isNotSure()) {
-                    text.append("❓ ");
-                } else if (scheduleDay.isSubscribed()) {
-                    text.append("✅ ");
-                }
-                text.append(Utils.timeToString(scheduleDay.getTime()))
-                        .append(scheduleDay.getWorkoutCode().length() > 0 ? " " + scheduleDay.getWorkoutCode() : "")
-                        .append("\n");
-                if (scheduleDay.getCount() > 0) {
-                    text.append(scheduleDay.getCount()).append(" чел.");
-                } else {
-                    text.append("-");
-                }
-
-                keyboardButton.setText(text.toString());
-                keyboardButton.setCallbackData("showSubscriptions|sId=" + scheduleDay.getId()
-                        + ";d=" + Utils.dateToString(context.getDate()));
-                rowInline.add(keyboardButton);
-
-            }
-            while (rowInline.size() > 0 && rowInline.size() < colCount) {
-                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
-                keyboardButton.setText(" ");
-                keyboardButton.setCallbackData(" ");
-                rowInline.add(keyboardButton);
-            }
-            keyboardInline.add(rowInline);
-
-            // Добавим кнопки перехода по датам
-            calendar.add(Calendar.DAY_OF_MONTH, -1);
-            java.util.Date leftDate = calendar.getTime();
-
-            calendar.add(Calendar.DAY_OF_MONTH, 2);
-            Date rightDate = calendar.getTime();
-
-            rowInline = new ArrayList<>();
-            InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("       ⬅   Назад       ");
-            keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(leftDate));
-            rowInline.add(keyboardButton);
-
-            keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("       Вперед   ➡       ");
-            keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(rightDate));
-            rowInline.add(keyboardButton);
-
-            keyboardInline.add(rowInline);
-
-            InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
-            replyKeyboard.setKeyboard(keyboardInline);
-
-            showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
-                    headerText, replyKeyboard);
-
-        }
-
         private void showSubscriptionsOnTime(BotContext context) {
 
             Date date = context.getDate();
@@ -269,7 +187,9 @@ public enum BotState {
                     context.getGym());
 
             StringBuilder text = new StringBuilder();
-            text.append("*").append(new SimpleDateFormat("d MMMM yyyy").format(context.getDate()))
+            String weekDay = new SimpleDateFormat("EEEE ").format(context.getDate());
+            text.append("*").append(weekDay.substring(0, 1).toUpperCase()).append(weekDay.substring(1))
+                    .append(new SimpleDateFormat("d MMMM yyyy").format(context.getDate()))
                     .append(" г.*\n")
                     .append(context.getSchedule().getWorkoutType().getName()).append(" на ")
                     .append(Utils.timeToString(context.getSchedule().getTime()))
@@ -485,24 +405,7 @@ public enum BotState {
         }
 
     },
-    BLOCKED {
-        @Override
-        public void handleInput(BotContext context) {
-
-            // Для заблокированных пользователей убираем главное меню
-            SendMessage message = new SendMessage();
-            message.setChatId(context.getCurrentUser().getChatId());
-            message.setText("Вы не являетесь участником клуба.");
-            message.setReplyMarkup(new ReplyKeyboardRemove());
-
-            try {
-                context.getBot().execute(message);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-
-        }
-    },
+    BLOCKED,
     ADMIN {
 
         @Override
@@ -525,13 +428,33 @@ public enum BotState {
 
             if (context.getUpdate().hasMessage()) {  // Обработка сообщения типа Message
 
+                List<Gym> gymList = context.gymRepo.findAll();
+                for (Gym gym : gymList) {
+                    if (context.getUpdate().getMessage().getText().contains(gym.getName())) {
+                        context.setGym(gym);
+                        context.setMainMenuHeader("Изменено на " + gym.getName());
+                        changeGym(context);
+                        showMainMenu(context);
+                        if (context.getCurrentUser().getScheduleType() == 0) {
+                            showScheduleOnDate(context);
+                        } else {
+                            showCommonScheduleOnDate(context);
+                        }
+                        return;
+                    }
+                }
+
                 switch (context.getUpdate().getMessage().getText()) {
                     case "График тренировок":
-                        showScheduleOnDate(context);
+                        if (context.getCurrentUser().getScheduleType() == 0) {
+                            showScheduleOnDate(context);
+                        } else {
+                            showCommonScheduleOnDate(context);
+                        }
                         break;
-                    case "Редактировать график":
-//                        showScheduleOnDate(context);
-                        break;
+//                    case "Редактировать график":
+////                        showScheduleOnDate(context);
+//                        break;
                     case "Заявки":
                         showWaitingUsers(context);
                         break;
@@ -541,11 +464,8 @@ public enum BotState {
                     case "Заблокированные":
                         showBlockedUsers(context);
                         break;
-                    case "Изменить клуб":
-                        showGymList(context);
-                        break;
                     default:
-                        showMainMenu(context, context.getCurrentUser());
+                        showMainMenu(context);
                         break;
                 }
 
@@ -555,7 +475,19 @@ public enum BotState {
 
                     switch (context.getCallbackData()) {
                         case "showSchedule":
-                            showScheduleOnDate(context);
+                            if (context.getCurrentUser().getScheduleType() == 0) {
+                                showScheduleOnDate(context);
+                            } else {
+                                showCommonScheduleOnDate(context);
+                            }
+                            break;
+                        case "chScheduleType":
+                            changeScheduleType(context);
+                            if (context.getCurrentUser().getScheduleType() == 0) {
+                                showScheduleOnDate(context);
+                            } else {
+                                showCommonScheduleOnDate(context);
+                            }
                             break;
                         case "showWaitingUsers":
                             showWaitingUsers(context);
@@ -586,92 +518,6 @@ public enum BotState {
                 }
 
             }
-
-        }
-
-        private void showScheduleOnDate(BotContext context) {
-
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(context.getDate());
-
-            StringBuilder text = new StringBuilder();
-            text.append(context.getCurrentUser().getDefaultGym().getName()).append("\n")
-                    .append("График на *")
-                    .append(new SimpleDateFormat("EEEE d MMMM").format(context.getDate())).append("*\n");
-
-            List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
-
-            for (ScheduleDay scheduleDay : scheduleDayList) {
-
-                text.append("\n*").append(Utils.timeToString(scheduleDay.getTime()))
-                        .append(scheduleDay.getWorkoutCode().length() > 0 ? " " + scheduleDay.getWorkoutCode() : "");
-                if (scheduleDay.getCount() > 0) {
-                    text.append(" - ").append(scheduleDay.getCount());
-                }
-                text.append("*\n");
-                List<Subscription> subscriptions = context.subscriptionRepo.findAllByDateAndTimeAndGym(
-                        new java.sql.Date(context.getDate().getTime()),
-                        new java.sql.Time(scheduleDay.getTime().getTime()),
-                        context.getGym());
-
-                if (subscriptions.size() == 0) {
-                    text.append("(пусто)\n");
-                }
-
-                for (Subscription subscription : subscriptions) {
-                    if (subscription.isNotSure()) {
-                        text.append("❓ ");
-                    } else if (subscription.getUser().getId() == context.getCurrentUser().getId()) {
-                        text.append("✅ ");
-                    } else {
-                        text.append("☑ ");
-                    }
-                    text.append("[").append(subscription.getUser().getName()).append("](")
-                            .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
-                    if (subscription.getCount() > 1) {
-                        text.append("➕ ").append(subscription.getCount() - 1).append(", от [")
-                                .append(subscription.getUser().getName()).append("](")
-                                .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
-                    }
-                }
-
-            }
-
-            // Добавим кнопки перехода по датам
-            calendar.add(Calendar.DAY_OF_MONTH, -1);
-            java.util.Date leftDate = calendar.getTime();
-
-            calendar.add(Calendar.DAY_OF_MONTH, 2);
-            Date rightDate = calendar.getTime();
-
-            List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
-            List<InlineKeyboardButton> rowInline = new ArrayList<>();
-
-            InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("  ⬅  Назад  ");
-            keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(leftDate));
-            rowInline.add(keyboardButton);
-
-            keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("\uD83D\uDD01");
-            keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(context.getDate()));
-            rowInline.add(keyboardButton);
-
-            keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("  Вперед  ➡  ");
-            keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(rightDate));
-            rowInline.add(keyboardButton);
-
-            keyboardInline.add(rowInline);
-
-            InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
-            replyKeyboard.setKeyboard(keyboardInline);
-
-            showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
-                    text.toString(), replyKeyboard);
 
         }
 
@@ -893,14 +739,35 @@ public enum BotState {
             user.setAdmin(context.getState().equals(BotState.ADMIN));
             context.userRepo.save(user);
 
+            // Сообщение при добавлении нового участника
             if (previousState.equals(BotState.WAITING) && context.getState().equals(BotState.ACTIVE)) {
-                sendMessage(context, "Ваша заявка одобрена. Добро пожаловать в наш клуб!", user.getChatId());
-                showMainMenu(context, user);
-            }
-            if (previousState.equals(BotState.WAITING) && context.getState().equals(BotState.BLOCKED)) {
-                sendMessage(context, "Ваша заявка отклонена. Обратитесь к администратору.", user.getChatId());
+                context.setMainMenuHeader("Ваша заявка одобрена. Добро пожаловать в наш клуб!");
+                showMainMenu(context);
             }
 
+            // Сообщение при блокировке участника
+            if (!previousState.equals(BotState.BLOCKED) && context.getState().equals(BotState.BLOCKED)) {
+                context.setMainMenuHeader("Вы заблокированы. Для уточнения обратитесь к администратору");
+                showMainMenu(context);
+            }
+
+            // Сообщение при разблокировке участника
+            if (previousState.equals(BotState.BLOCKED) && !context.getState().equals(BotState.BLOCKED)) {
+                context.setMainMenuHeader("Вы снова являетесь участником клуба. Выберите действие");
+                showMainMenu(context);
+            }
+
+            // Сообщение при добавлении в администраторы
+            if (!previousState.equals(BotState.ADMIN) && context.getState().equals(BotState.ADMIN)) {
+                context.setMainMenuHeader("Вас сделали администратором");
+                showMainMenu(context);
+            }
+
+            // Сообщение при удалении из администраторов
+            if (previousState.equals(BotState.ADMIN) && !context.getState().equals(BotState.ADMIN)) {
+                context.setMainMenuHeader("Вы больше не являетесь администратором");
+                showMainMenu(context);
+            }
 
         }
 
@@ -1024,27 +891,48 @@ public enum BotState {
         return this;
     }
 
-    public void showMainMenu(BotContext context, User user) {
+    public ReplyKeyboardMarkup getMainMenu(BotContext context) {
+
+        User user = context.getUser();
+
+        // При выводе главного меню, счетчик сообщений необходимо сбросить
+        if (context.getCurrentUser().getId() != user.getId()) {
+            user.setLastMessageId(0);
+            context.userRepo.save(user);
+        }
 
         List<KeyboardRow> keyboardRowList = new ArrayList<>();
-
-        KeyboardRow keyboardRow = new KeyboardRow();
-        keyboardRow.add("График тренировок");
-        keyboardRowList.add(keyboardRow);
+        KeyboardRow keyboardRow;
 
         if (user.isAdmin()) {
+
+            keyboardRow = new KeyboardRow();
+            keyboardRow.add("График тренировок");
+//            keyboardRow.add("Полный график");
+            keyboardRowList.add(keyboardRow);
+
             keyboardRow = new KeyboardRow();
             keyboardRow.add("Заявки");
             keyboardRow.add("Все участники");
             keyboardRow.add("Заблокированные");
             keyboardRowList.add(keyboardRow);
 
-            keyboardRow = new KeyboardRow();
-            keyboardRow.add("Изменить клуб");
-            keyboardRowList.add(keyboardRow);
+            List<Gym> gymList = context.gymRepo.findAll();
 
             keyboardRow = new KeyboardRow();
-            keyboardRow.add("Редактировать график");
+            for (Gym gym : gymList) {
+                StringBuilder buttonText = new StringBuilder();
+                if (context.getUser().getDefaultGym().getId() == gym.getId()) {
+                    buttonText.append("✅ ");
+                }
+                buttonText.append(gym.getName());
+                keyboardRow.add(buttonText.toString());
+            }
+            keyboardRowList.add(keyboardRow);
+
+        } else {
+            keyboardRow = new KeyboardRow();
+            keyboardRow.add("График тренировок");
             keyboardRowList.add(keyboardRow);
         }
 
@@ -1052,15 +940,231 @@ public enum BotState {
         replyKeyboard.setKeyboard(keyboardRowList);
         replyKeyboard.setResizeKeyboard(true);
 
+        return replyKeyboard;
+
+    }
+
+    public void showMainMenu(BotContext context) {
+
+        User user = context.getUser();
+
         SendMessage message = new SendMessage();
         message.setChatId(user.getChatId());
-        message.setText("Выберите действие");
-        message.setReplyMarkup(replyKeyboard);
+        message.setText(context.getMainMenuHeader());
+
+        if (user.getState().equals(BotState.BLOCKED)) {
+            message.setReplyMarkup(new ReplyKeyboardRemove());
+        } else {
+            message.setReplyMarkup(getMainMenu(context));
+        }
+
         try {
             context.getBot().execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+
+    }
+
+    public void showCommonScheduleOnDate(BotContext context) {
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(context.getDate());
+
+        StringBuilder headerText = new StringBuilder();
+        headerText.append("График на *")
+                .append(new SimpleDateFormat("EEEE d MMMM").format(context.getDate())).append("*\n")
+                .append(context.getCurrentUser().getDefaultGym().getName()).append("\n");
+
+        List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
+
+        for (ScheduleDay scheduleDay : scheduleDayList) {
+
+            headerText.append("\n*").append(Utils.timeToString(scheduleDay.getTime()))
+                    .append(scheduleDay.getWorkoutCode().length() > 0 ? " " + scheduleDay.getWorkoutCode() : "");
+            if (scheduleDay.getCount() > 0) {
+                headerText.append(" - ").append(scheduleDay.getCount());
+            }
+            headerText.append("*\n");
+            List<Subscription> subscriptions = context.subscriptionRepo.findAllByDateAndTimeAndGym(
+                    new java.sql.Date(context.getDate().getTime()),
+                    new java.sql.Time(scheduleDay.getTime().getTime()),
+                    context.getGym());
+
+            if (subscriptions.size() == 0) {
+                headerText.append("(пусто)\n");
+            }
+
+            for (Subscription subscription : subscriptions) {
+                if (subscription.isNotSure()) {
+                    headerText.append("❓ ");
+                } else if (subscription.getUser().getId() == context.getCurrentUser().getId()) {
+                    headerText.append("✅ ");
+                } else {
+                    headerText.append("☑ ");
+                }
+                headerText.append("[").append(subscription.getUser().getName()).append("](")
+                        .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
+                if (subscription.getCount() > 1) {
+                    headerText.append("➕ ").append(subscription.getCount() - 1).append(", от [")
+                            .append(subscription.getUser().getName()).append("](")
+                            .append("tg://user?id=").append(subscription.getUser().getChatId()).append(")\n");
+                }
+            }
+
+        }
+
+        List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline;
+        InlineKeyboardButton keyboardButton;
+
+        // Кнопки перехода по датам
+        calendar.add(Calendar.DAY_OF_MONTH, -1);
+        java.util.Date leftDate = calendar.getTime();
+
+        calendar.add(Calendar.DAY_OF_MONTH, 2);
+        Date rightDate = calendar.getTime();
+
+        rowInline = new ArrayList<>();
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("  ⬅  Назад  ");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(leftDate));
+        rowInline.add(keyboardButton);
+
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("\uD83D\uDD01");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(context.getDate()));
+        rowInline.add(keyboardButton);
+
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("  Вперед  ➡  ");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(rightDate));
+        rowInline.add(keyboardButton);
+
+        keyboardInline.add(rowInline);
+
+        // Кнопка изменения вида расписания
+        rowInline = new ArrayList<>();
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("Изменить вид");
+        keyboardButton.setCallbackData("chScheduleType|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(context.getDate()));
+        rowInline.add(keyboardButton);
+        keyboardInline.add(rowInline);
+
+        // Вывод клавиатуры
+        InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
+        replyKeyboard.setKeyboard(keyboardInline);
+
+        showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
+                headerText.toString(), replyKeyboard);
+
+    }
+
+    public void showScheduleOnDate(BotContext context) {
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(context.getDate());
+
+        StringBuilder headerText = new StringBuilder();
+        headerText.append("График на *")
+                .append(new SimpleDateFormat("EEEE d MMMM").format(context.getDate())).append("*\n")
+                .append(context.getCurrentUser().getDefaultGym().getName());
+
+        List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
+
+        // Кнопки выбора времени занятия
+        List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline;
+        InlineKeyboardButton keyboardButton;
+
+        int colCount = 2;
+        rowInline = new ArrayList<>();
+        for (ScheduleDay scheduleDay : scheduleDayList) {
+
+            if (rowInline.size() >= colCount) {
+                keyboardInline.add(rowInline);
+                rowInline = new ArrayList<>();
+            }
+            keyboardButton = new InlineKeyboardButton();
+
+            StringBuilder text = new StringBuilder();
+            if (scheduleDay.isNotSure()) {
+                text.append("❓ ");
+            } else if (scheduleDay.isSubscribed()) {
+                text.append("✅ ");
+            }
+            text.append(Utils.timeToString(scheduleDay.getTime()))
+                    .append(scheduleDay.getWorkoutCode().length() > 0 ? " " + scheduleDay.getWorkoutCode() : "")
+                    .append("\n");
+            if (scheduleDay.getCount() > 0) {
+                text.append(scheduleDay.getCount()).append(" чел.");
+            } else {
+                text.append("-");
+            }
+
+            keyboardButton.setText(text.toString());
+            keyboardButton.setCallbackData("showSubscriptions|sId=" + scheduleDay.getId()
+                    + ";d=" + Utils.dateToString(context.getDate()));
+            rowInline.add(keyboardButton);
+
+        }
+        while (rowInline.size() > 0 && rowInline.size() < colCount) {
+            keyboardButton = new InlineKeyboardButton();
+            keyboardButton.setText(" ");
+            keyboardButton.setCallbackData(" ");
+            rowInline.add(keyboardButton);
+        }
+        keyboardInline.add(rowInline);
+
+        // Кнопки перехода по датам
+        calendar.add(Calendar.DAY_OF_MONTH, -1);
+        java.util.Date leftDate = calendar.getTime();
+
+        calendar.add(Calendar.DAY_OF_MONTH, 2);
+        Date rightDate = calendar.getTime();
+
+        rowInline = new ArrayList<>();
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("  ⬅  Назад  ");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(leftDate));
+        rowInline.add(keyboardButton);
+
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("\uD83D\uDD01");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(context.getDate()));
+        rowInline.add(keyboardButton);
+
+        keyboardButton = new InlineKeyboardButton();
+        keyboardButton.setText("  Вперед  ➡  ");
+        keyboardButton.setCallbackData("showSchedule|gId=" + context.getGym().getId()
+                + ";d=" + Utils.dateToString(rightDate));
+        rowInline.add(keyboardButton);
+
+        keyboardInline.add(rowInline);
+
+        // Кнопка изменения вида расписания
+        if (context.getCurrentUser().isAdmin()) {
+            rowInline = new ArrayList<>();
+            keyboardButton = new InlineKeyboardButton();
+            keyboardButton.setText("Изменить вид");
+            keyboardButton.setCallbackData("chScheduleType|gId=" + context.getGym().getId()
+                    + ";d=" + Utils.dateToString(context.getDate()));
+            rowInline.add(keyboardButton);
+            keyboardInline.add(rowInline);
+        }
+
+        // Вывод клавиатуры
+        InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
+        replyKeyboard.setKeyboard(keyboardInline);
+
+        showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
+                headerText.toString(), replyKeyboard);
 
     }
 
@@ -1094,6 +1198,17 @@ public enum BotState {
                 e.printStackTrace();
             }
 
+        }
+
+    }
+
+    public void changeScheduleType(BotContext context) {
+
+        User user = context.getCurrentUser();
+        if (user.getScheduleType() == 0) {
+            user.setScheduleType(1);
+        } else {
+            user.setScheduleType(0);
         }
 
     }

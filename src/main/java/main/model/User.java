@@ -26,6 +26,7 @@ public class User {
     private boolean isAdmin;
     private int lastMessageId;
     private Date regDate;
+    private int scheduleType;
 
     public int getId() {
         return id;
@@ -97,6 +98,14 @@ public class User {
 
     public void setRegDate(Date regDate) {
         this.regDate = regDate;
+    }
+
+    public int getScheduleType() {
+        return scheduleType;
+    }
+
+    public void setScheduleType(int scheduleType) {
+        this.scheduleType = scheduleType;
     }
 
 }
