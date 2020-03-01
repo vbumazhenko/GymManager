@@ -29,7 +29,7 @@ public class Utils {
 
         Date time = null;
         try {
-            time = new SimpleDateFormat("HH:mm:ss").parse(timeStr);
+            time = new SimpleDateFormat("H:mm").parse(timeStr);
         } catch (ParseException e) {
             e.printStackTrace();
         }
@@ -90,4 +90,9 @@ public class Utils {
 
     }
 
+    public static String[] getTime(String time) {
+
+        return new String[2];
+
+    }
 }

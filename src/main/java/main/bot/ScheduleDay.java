@@ -7,6 +7,7 @@ public class ScheduleDay {
     private int id;
     private int weekday;
     private Date time;
+    private int workoutId;
     private String workoutCode;
     private String workoutName;
     private int count;
@@ -35,6 +36,14 @@ public class ScheduleDay {
 
     public void setTime(Date time) {
         this.time = time;
+    }
+
+    public int getWorkoutId() {
+        return workoutId;
+    }
+
+    public void setWorkoutId(int workoutId) {
+        this.workoutId = workoutId;
     }
 
     public String getWorkoutCode() {

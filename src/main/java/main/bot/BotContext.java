@@ -3,10 +3,8 @@ package main.bot;
 import main.model.Gym;
 import main.model.Schedule;
 import main.model.User;
-import main.repository.GymRepo;
-import main.repository.ScheduleRepo;
-import main.repository.SubscriptionRepo;
-import main.repository.UserRepo;
+import main.model.WorkoutType;
+import main.repository.*;
 import main.service.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,7 +19,7 @@ public class BotContext {
     protected UserRepo userRepo;
 
     @Autowired
-    protected ScheduleRepo scheduleRepo;
+    public ScheduleRepo scheduleRepo;
 
     @Autowired
     protected ScheduleService scheduleService;
@@ -32,12 +30,16 @@ public class BotContext {
     @Autowired
     protected GymRepo gymRepo;
 
+    @Autowired
+    public WorkoutTypeRepo workoutTypeRepo;
+
     private ChatBot bot;
     private User currentUser;
     private Update update;
     private int messageId;
     private String callbackData;
     private Date date;
+    private Date time;
     private Gym gym;
     private Schedule schedule;
     private boolean notSure;
@@ -56,6 +58,7 @@ public class BotContext {
         callbackData = "";
         schedule = null;
         date = new Date();
+        time = new Date(0);
         gym = currentUser.getDefaultGym();
         notSure = false;
         addCount = 0;
@@ -90,6 +93,9 @@ public class BotContext {
                             break;
                         case "d":   // date
                             date = Utils.stringToDate(keys[1]);
+                            break;
+                        case "t":   // time
+                            time = Utils.stringToTime(keys[1]);
                             break;
                         case "gId": // gymId
                             gymRepo.findById(Integer.parseInt(keys[1])).ifPresent(value -> gym = value);
@@ -143,6 +149,10 @@ public class BotContext {
 
     public Date getDate() {
         return date;
+    }
+
+    public Date getTime() {
+        return time;
     }
 
     public Gym getGym() {

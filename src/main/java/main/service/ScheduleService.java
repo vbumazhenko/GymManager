@@ -3,15 +3,14 @@ package main.service;
 import main.bot.BotContext;
 import main.bot.Utils;
 import main.bot.ScheduleDay;
+import main.model.Schedule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,7 +28,7 @@ public class ScheduleService {
 
         String queryStr =
                 "SELECT * FROM (\n" +
-                "SELECT s.id, s.weekday, s.time, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
+                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
                 "FROM schedule s\n" +
                 "JOIN (SELECT Max(date) AS date FROM schedule WHERE gym_id = %3$d AND date <= '%2$s' AND weekday = %4$d) AS max_date\n" +
                 "   ON s.date >= max_date.date\n" +
@@ -40,7 +39,7 @@ public class ScheduleService {
                 "WHERE s.gym_id = %3$d AND s.weekday = %4$d\n" +
                 "GROUP BY s.id, s.weekday, s.time\n" +
                 "UNION\n" +
-                "SELECT s.id, s.weekday, s.time, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
+                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
                 "FROM schedule s\n" +
                 "LEFT JOIN subscription ss\n" +
                 "   ON (ss.date = '%2$s' AND s.time = ss.time AND s.gym_id = ss.gym_id)\n" +
@@ -68,7 +67,8 @@ public class ScheduleService {
                 ScheduleDay scheduleDay = new ScheduleDay();
                 scheduleDay.setId(resultSet.getInt("id"));
                 scheduleDay.setWeekday(resultSet.getInt("weekday"));
-                scheduleDay.setTime(Utils.stringToTime(resultSet.getString("time")));
+                scheduleDay.setTime(new java.util.Date(resultSet.getTime("time").getTime()));
+                scheduleDay.setWorkoutId(resultSet.getInt("workoutId"));
                 scheduleDay.setWorkoutCode(resultSet.getString("workoutCode"));
                 scheduleDay.setWorkoutName(resultSet.getString("workoutName"));
                 scheduleDay.setCount(resultSet.getInt("count"));
@@ -91,6 +91,33 @@ public class ScheduleService {
         } else {
             return scheduleDayList;
         }
+    }
+
+    public void copyScheduleOnDay(BotContext context) {
+
+        List<ScheduleDay> scheduleDayList = getScheduleDayList(context);
+
+        List<Schedule> newScheduleList = new ArrayList<>();
+
+        for (ScheduleDay scheduleDay : scheduleDayList) {
+
+            // Если расписание уже скопировано, то ничего не делаем.
+            if (scheduleDay.getWeekday() == 0) {
+                return;
+            }
+
+            // В противном случае произведем копирование расписания на текущий день.
+            Schedule newSchedule = new Schedule();
+            newSchedule.setDate(new Date(context.getDate().getTime()));
+            newSchedule.setTime(new Time(scheduleDay.getTime().getTime()));
+            newSchedule.setWeekday(0);
+            context.workoutTypeRepo.findById(scheduleDay.getWorkoutId()).ifPresent(newSchedule::setWorkoutType);
+            newSchedule.setGym(context.getCurrentUser().getDefaultGym());
+            newScheduleList.add(newSchedule);
+
+        }
+        context.scheduleRepo.saveAll(newScheduleList);
+
     }
 
 }
