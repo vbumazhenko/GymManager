@@ -26,7 +26,7 @@ public class User {
     private boolean isAdmin;
     private int lastMessageId;
     private Date regDate;
-    private int scheduleType;
+    private Date inputDate;
 
     public int getId() {
         return id;
@@ -100,12 +100,12 @@ public class User {
         this.regDate = regDate;
     }
 
-    public int getScheduleType() {
-        return scheduleType;
+    public java.util.Date getInputDate() {
+        return new java.util.Date(inputDate.getTime());
     }
 
-    public void setScheduleType(int scheduleType) {
-        this.scheduleType = scheduleType;
+    public void setInputDate(java.util.Date inputDate) {
+        this.inputDate = new Date(inputDate.getTime());
     }
 
 }

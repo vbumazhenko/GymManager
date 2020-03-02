@@ -108,8 +108,8 @@ public class ScheduleService {
 
             // В противном случае произведем копирование расписания на текущий день.
             Schedule newSchedule = new Schedule();
-            newSchedule.setDate(new Date(context.getDate().getTime()));
-            newSchedule.setTime(new Time(scheduleDay.getTime().getTime()));
+            newSchedule.setDate(context.getDate());
+            newSchedule.setTime(scheduleDay.getTime());
             newSchedule.setWeekday(0);
             context.workoutTypeRepo.findById(scheduleDay.getWorkoutId()).ifPresent(newSchedule::setWorkoutType);
             newSchedule.setGym(context.getCurrentUser().getDefaultGym());

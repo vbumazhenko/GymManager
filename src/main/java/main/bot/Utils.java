@@ -4,6 +4,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Utils {
 
@@ -47,7 +49,7 @@ public class Utils {
 
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
-        return 7 - (8 - calendar.get(Calendar.DAY_OF_WEEK))%7; // Делаем первым днем понедельник, а не воскресенье
+        return 7 - (8 - calendar.get(Calendar.DAY_OF_WEEK)) % 7; // Делаем первым днем понедельник, а не воскресенье
 
     }
 
@@ -90,9 +92,31 @@ public class Utils {
 
     }
 
-    public static String[] getTime(String time) {
+    public static String getModifyCode(String code) {
 
-        return new String[2];
+        Map<String, String> letters = new HashMap<String, String>();
+        letters.put("А", "A");
+        letters.put("В", "B");
+        letters.put("С", "C");
+        letters.put("Е", "E");
+        letters.put("К", "K");
+        letters.put("М", "M");
+        letters.put("Н", "H");
+        letters.put("О", "O");
+        letters.put("Р", "P");
+        letters.put("Т", "T");
+        letters.put("Х", "X");
+
+        code = code.toUpperCase();
+        StringBuilder result = new StringBuilder(code.length());
+
+        for (int i = 0; i < result.length(); i++) {
+            String l = result.substring(i, i + 1);
+            result.append(letters.getOrDefault(l, l));
+        }
+
+        return result.toString();
 
     }
+
 }

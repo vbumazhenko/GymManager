@@ -11,12 +11,12 @@ public class Schedule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     private Date date;
+    private Time time;
+    private int weekday;
 
     @ManyToOne
     @JoinColumn
     private Gym gym;
-    private int weekday;
-    private Time time;
 
     @ManyToOne
     @JoinColumn
@@ -30,20 +30,20 @@ public class Schedule {
         this.id = id;
     }
 
-    public Date getDate() {
-        return date;
+    public java.util.Date getDate() {
+        return new java.util.Date(date.getTime());
     }
 
-    public void setDate(Date Date) {
-        this.date = Date;
+    public void setDate(java.util.Date date) {
+        this.date = new Date(date.getTime());
     }
 
-    public Gym getGym() {
-        return gym;
+    public java.util.Date getTime() {
+        return new java.util.Date(time.getTime());
     }
 
-    public void setGym(Gym gym) {
-        this.gym = gym;
+    public void setTime(java.util.Date time) {
+        this.time = new Time(time.getTime());
     }
 
     public int getWeekday() {
@@ -54,12 +54,12 @@ public class Schedule {
         this.weekday = weekday;
     }
 
-    public Time getTime() {
-        return time;
+    public Gym getGym() {
+        return gym;
     }
 
-    public void setTime(Time time) {
-        this.time = time;
+    public void setGym(Gym gym) {
+        this.gym = gym;
     }
 
     public WorkoutType getWorkoutType() {

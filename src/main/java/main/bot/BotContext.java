@@ -151,6 +151,10 @@ public class BotContext {
         return date;
     }
 
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
     public Date getTime() {
         return time;
     }
