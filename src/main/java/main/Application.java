@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 @SpringBootApplication
 public class Application {
 
-    public static void main(String[] args) throws TelegramApiRequestException {
+    public static void main(String[] args) {
         ApiContextInitializer.init();
         SpringApplication.run(Application.class, args);
 
@@ -19,8 +19,8 @@ public class Application {
          * + 3. Сделать админку для админа, минимум функций: просморт занятий, добавление и удаление участников
          * 4. За час (опционально) до тренировки попросить определиться тех, кто под вопросом (написать сообщение)
          * 5. Добавить логирование
-         * 6. Изменить идентификацию расписания на дату+время
-         * 7. Добавить ограничение на то, чтобы нельзя быдо редактировать прошедшее время
+         * + 6. Изменить идентификацию расписания на дату+время
+         * 7. Добавить ограничение на то, чтобы нельзя было редактировать прошедшее время
          *
          *
          *

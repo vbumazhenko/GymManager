@@ -83,11 +83,11 @@ public class Utils {
     public static boolean notAccessSubscribe(BotContext context) {
 
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(context.getSchedule().getTime());
+        calendar.setTime(context.getTime());
 
         long endTimeWorkoutMillis = context.getDate().getTime()
                 + 3600000 * calendar.get(Calendar.HOUR_OF_DAY) + 60000 * calendar.get(Calendar.MINUTE)
-                + (long) (3600000 * context.getSchedule().getWorkoutType().getDuration());
+                + (long) (3600000 * context.getWorkoutType().getDuration());
         return endTimeWorkoutMillis < System.currentTimeMillis();
 
     }
@@ -110,8 +110,8 @@ public class Utils {
         code = code.toUpperCase();
         StringBuilder result = new StringBuilder(code.length());
 
-        for (int i = 0; i < result.length(); i++) {
-            String l = result.substring(i, i + 1);
+        for (int i = 0; i < code.length(); i++) {
+            String l = code.substring(i, i + 1);
             result.append(letters.getOrDefault(l, l));
         }
 

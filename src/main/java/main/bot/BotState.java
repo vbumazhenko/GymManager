@@ -1,8 +1,6 @@
 package main.bot;
 
 import main.model.*;
-import main.repository.UserRepo;
-import main.service.ScheduleService;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -18,7 +16,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public enum BotState {
 
@@ -92,11 +89,10 @@ public enum BotState {
         @Override
         public void enter(BotContext context) {
 
-            List<User> adminList = context.userRepo.findAllByIsAdmin(true);
-            for (User admin : adminList) {
-                String text = "Получен новый запрос от пользователя: " + context.getCurrentUser().getName();
-                sendMessage(context, text, admin.getChatId());
-            }
+            String text = "Запрос на добавление от пользователя " + "[" +
+                    context.getCurrentUser().getName() + "](" +
+                    "tg://user?id=" + context.getCurrentUser().getChatId() + ")";
+            sendMessageToAdmin(context, text);
 
         }
 
@@ -201,10 +197,9 @@ public enum BotState {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(context.getDate());
 
-            StringBuilder headerText = new StringBuilder();
-            headerText.append("График на *")
-                    .append(new SimpleDateFormat("EEEE d MMMM").format(context.getDate())).append("*\n")
-                    .append(context.getCurrentUser().getDefaultGym().getName());
+            String headerText = "График на *" +
+                    new SimpleDateFormat("EEEE d MMMM").format(context.getDate()) + "*\n" +
+                    context.getCurrentUser().getDefaultGym().getName();
 
             List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
 
@@ -239,8 +234,8 @@ public enum BotState {
                 }
 
                 keyboardButton.setText(text.toString());
-                keyboardButton.setCallbackData("showScheduleOnTime|sId=" + scheduleDay.getId()
-                        + ";d=" + Utils.dateToString(context.getDate()));
+                keyboardButton.setCallbackData("showScheduleOnTime|d=" + Utils.dateToString(context.getDate())
+                        + ";t=" + Utils.timeToString(scheduleDay.getTime()));
                 rowInline.add(keyboardButton);
 
             }
@@ -262,20 +257,17 @@ public enum BotState {
             rowInline = new ArrayList<>();
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("  ⬅  Назад  ");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(leftDate));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(leftDate));
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("\uD83D\uDD01");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(context.getDate()));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(context.getDate()));
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("  Вперед  ➡  ");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(rightDate));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(rightDate));
             rowInline.add(keyboardButton);
 
             keyboardInline.add(rowInline);
@@ -285,18 +277,22 @@ public enum BotState {
             replyKeyboard.setKeyboard(keyboardInline);
 
             showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
-                    headerText.toString(), replyKeyboard);
+                    headerText, replyKeyboard);
 
         }
 
         private void showScheduleOnTime(BotContext context) {
 
-            Date date = context.getDate();
-            Date time = context.getSchedule().getTime();
+            if (context.getWorkoutType() == null) {
+                // Случай, когда пользователь пытается открыть расписание на
+                // время, которое администратор уже удалил.
+                showScheduleOnDate(context);
+                return;
+            }
 
             List<Subscription> subscriptions = context.subscriptionRepo.findAllByDateAndTimeAndGym(
-                    new java.sql.Date(date.getTime()),
-                    new java.sql.Time(time.getTime()),
+                    new java.sql.Date(context.getDate().getTime()),
+                    new java.sql.Time(context.getTime().getTime()),
                     context.getGym());
 
             StringBuilder text = new StringBuilder();
@@ -304,10 +300,10 @@ public enum BotState {
             text.append("*").append(weekDay.substring(0, 1).toUpperCase()).append(weekDay.substring(1))
                     .append(new SimpleDateFormat("d MMMM yyyy").format(context.getDate()))
                     .append(" г.*\n")
-                    .append(context.getSchedule().getWorkoutType().getName()).append(" на ")
-                    .append(Utils.timeToString(context.getSchedule().getTime()))
-                    .append("\n_Продолжительность ").append(context.getSchedule().getWorkoutType().getDuration())
-                    .append(" ч._\n\n");
+                    .append(context.getWorkoutType().getName()).append(" на ")
+                    .append(Utils.timeToString(context.getTime()))
+                    .append("\n_Продолжительность ").append(context.getWorkoutType().getDuration())
+                    .append(" ч._\n").append(context.getGym().getName()).append("\n\n");
 
             if (subscriptions.size() > 0) {
                 text.append("Состав группы:\n");
@@ -361,21 +357,21 @@ public enum BotState {
             List<InlineKeyboardButton> rowInline = new ArrayList<>();
             InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("✅ Пойду");
-            keyboardButton.setCallbackData("subscribe|sId=" + context.getSchedule().getId()
-                    + ";d=" + Utils.dateToString(context.getDate())
+            keyboardButton.setCallbackData("subscribe|d=" + Utils.dateToString(context.getDate())
+                    + ";t=" + Utils.timeToString(context.getTime())
                     + ";notSure=0");
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("❌ Не пойду");
-            keyboardButton.setCallbackData("unSubscribe|sId=" + context.getSchedule().getId()
-                    + ";d=" + Utils.dateToString(context.getDate()));
+            keyboardButton.setCallbackData("unSubscribe|d=" + Utils.dateToString(context.getDate())
+                    + ";t=" + Utils.timeToString(context.getTime()));
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("❓ Возможно");
-            keyboardButton.setCallbackData("subscribe|sId=" + context.getSchedule().getId()
-                    + ";d=" + Utils.dateToString(context.getDate())
+            keyboardButton.setCallbackData("subscribe|d=" + Utils.dateToString(context.getDate())
+                    + ";t=" + Utils.timeToString(context.getTime())
                     + ";notSure=1");
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
@@ -384,22 +380,21 @@ public enum BotState {
             rowInline = new ArrayList<>();
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("➕ 1");
-            keyboardButton.setCallbackData("addSubscribe|sId=" + context.getSchedule().getId()
-                    + ";d=" + Utils.dateToString(context.getDate())
+            keyboardButton.setCallbackData("addSubscribe|d=" + Utils.dateToString(context.getDate())
+                    + ";t=" + Utils.timeToString(context.getTime())
                     + ";c=1");
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("➖ 1");
-            keyboardButton.setCallbackData("addSubscribe|sId=" + context.getSchedule().getId()
-                    + ";d=" + Utils.dateToString(context.getDate())
+            keyboardButton.setCallbackData("addSubscribe|d=" + Utils.dateToString(context.getDate())
+                    + ";t=" + Utils.timeToString(context.getTime())
                     + ";c=-1");
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
-            keyboardButton.setText("⬅ Назад");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(date));
+            keyboardButton.setText("« Назад");
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(context.getDate()));
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
 
@@ -413,25 +408,31 @@ public enum BotState {
 
         private boolean subscribeUser(BotContext context) {
 
+            if (context.getWorkoutType() == null) {
+                // Случай, когда пользователь изменить запись на
+                // время, которое администратор уже удалил.
+                showScheduleOnDate(context);
+                return false;
+            }
+
             if (Utils.notAccessSubscribe(context)) {
                 return false;
             }
 
             boolean result = false;
-            Date date = context.getDate();
-            Date time = context.getSchedule().getTime();
 
             Optional<Subscription> subscriptionOptional = context.subscriptionRepo.findByDateAndTimeAndGymAndUser(
-                    new java.sql.Date(date.getTime()),
-                    new java.sql.Time(time.getTime()),
+                    new java.sql.Date(context.getDate().getTime()),
+                    new java.sql.Time(context.getTime().getTime()),
                     context.getGym(),
                     context.getCurrentUser()
             );
 
             if (subscriptionOptional.isEmpty()) {
+
                 Subscription subscribe = new Subscription();
-                subscribe.setDate(new java.sql.Date(date.getTime()));
-                subscribe.setTime(new java.sql.Time(time.getTime()));
+                subscribe.setDate(new java.sql.Date(context.getDate().getTime()));
+                subscribe.setTime(new java.sql.Time(context.getTime().getTime()));
                 subscribe.setGym(context.getGym());
                 subscribe.setUser(context.getCurrentUser());
                 subscribe.setNotSure(context.isNotSure());
@@ -440,6 +441,14 @@ public enum BotState {
                 }
                 context.subscriptionRepo.save(subscribe);
                 result = true;
+
+                if (Utils.dateToString(context.getDate()).equals(Utils.dateToString(new Date()))) {
+                    String text = "ЗАПИСЬ " + "[" + context.getCurrentUser().getName() + "](" +
+                            "tg://user?id=" + context.getCurrentUser().getChatId() + ") на *" +
+                            Utils.timeToString(context.getTime()) + "*\n" + context.getGym().getName();
+                    sendMessageToAdmin(context, text);
+                }
+
             } else {
                 Subscription subscribe = subscriptionOptional.get();
                 if (subscribe.isNotSure() != context.isNotSure()) {
@@ -460,25 +469,39 @@ public enum BotState {
 
         private boolean unSubscribeUser(BotContext context) {
 
+            if (context.getWorkoutType() == null) {
+                // Случай, когда пользователь изменить запись на
+                // время, которое администратор уже удалил.
+                showScheduleOnDate(context);
+                return false;
+            }
+
             if (Utils.notAccessSubscribe(context)) {
                 return false;
             }
 
             boolean result = false;
-            Date date = context.getDate();
-            Date time = context.getSchedule().getTime();
 
             Optional<Subscription> subscriptionOptional = context.subscriptionRepo.findByDateAndTimeAndGymAndUser(
-                    new java.sql.Date(date.getTime()),
-                    new java.sql.Time(time.getTime()),
+                    new java.sql.Date(context.getDate().getTime()),
+                    new java.sql.Time(context.getTime().getTime()),
                     context.getGym(),
                     context.getCurrentUser()
             );
 
             if (subscriptionOptional.isPresent()) {
+
                 Subscription subscribe = subscriptionOptional.get();
                 context.subscriptionRepo.delete(subscribe);
                 result = true;
+
+                if (Utils.dateToString(context.getDate()).equals(Utils.dateToString(new Date()))) {
+                    String text = "ОТМЕНА ЗАПИСИ " + "[" + context.getCurrentUser().getName() + "](" +
+                            "tg://user?id=" + context.getCurrentUser().getChatId() + ") на *" +
+                            Utils.timeToString(context.getTime()) + "*\n" + context.getGym().getName();
+                    sendMessageToAdmin(context, text);
+                }
+
             }
 
             return result;
@@ -487,17 +510,22 @@ public enum BotState {
 
         private boolean addSubscribe(BotContext context) {
 
+            if (context.getWorkoutType() == null) {
+                // Случай, когда пользователь изменить запись на
+                // время, которое администратор уже удалил.
+                showScheduleOnDate(context);
+                return false;
+            }
+
             if (Utils.notAccessSubscribe(context)) {
                 return false;
             }
 
             boolean result = false;
-            Date date = context.getDate();
-            Date time = context.getSchedule().getTime();
 
             Optional<Subscription> subscriptionOptional = context.subscriptionRepo.findByDateAndTimeAndGymAndUser(
-                    new java.sql.Date(date.getTime()),
-                    new java.sql.Time(time.getTime()),
+                    new java.sql.Date(context.getDate().getTime()),
+                    new java.sql.Time(context.getTime().getTime()),
                     context.getGym(),
                     context.getCurrentUser()
             );
@@ -633,8 +661,6 @@ public enum BotState {
         @Override
         public ReplyKeyboard getMainMenu(BotContext context) {
 
-            User user = context.getUser();
-
             List<KeyboardRow> keyboardRowList = new ArrayList<>();
             KeyboardRow keyboardRow;
 
@@ -731,20 +757,17 @@ public enum BotState {
             rowInline = new ArrayList<>();
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("  ⬅  Назад  ");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(leftDate));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(leftDate));
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("\uD83D\uDD01");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(context.getDate()));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(context.getDate()));
             rowInline.add(keyboardButton);
 
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("  Вперед  ➡  ");
-            keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(rightDate));
+            keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(rightDate));
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
 
@@ -752,8 +775,7 @@ public enum BotState {
             rowInline = new ArrayList<>();
             keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText("Редактировать");
-            keyboardButton.setCallbackData("editSchedule|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(context.getDate()));
+            keyboardButton.setCallbackData("editSchedule|d=" + Utils.dateToString(context.getDate()));
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
 
@@ -790,8 +812,8 @@ public enum BotState {
             for (Subscription subscription : subscriptionList) {
                 String text = "Тренировка на *" + Utils.timeToString(subscription.getTime()) + " "
                         + new SimpleDateFormat("EEEE d MMMM yyyy").format(context.getDate())
-                        + "* отменена";
-                sendMessage(context, text, subscription.getUser().getChatId());
+                        + " г.* отменена. Пожалуйста, запишитесь на другое время";
+                sendMessage(context, text, subscription.getUser());
             }
 
             // Удаление подписки всех пользователей на данное время
@@ -1022,19 +1044,19 @@ public enum BotState {
 
             // Сообщение при добавлении нового участника
             if (previousState.equals(BotState.WAITING) && context.getState().equals(BotState.ACTIVE)) {
-                context.setMainMenuHeader("Ваша заявка одобрена. Добро пожаловать в наш клуб!");
+                context.setMainMenuHeader("Ваша заявка одобрена.\nДобро пожаловать в наш клуб!");
                 showMainMenu(context, context.getState().getMainMenu(context));
             }
 
             // Сообщение при блокировке участника
             if (!previousState.equals(BotState.BLOCKED) && context.getState().equals(BotState.BLOCKED)) {
-                context.setMainMenuHeader("Вы заблокированы. Для уточнения обратитесь к администратору");
+                context.setMainMenuHeader("Вы заблокированы.\nДля уточнения обратитесь к администратору");
                 showMainMenu(context, context.getState().getMainMenu(context));
             }
 
             // Сообщение при разблокировке участника
             if (previousState.equals(BotState.BLOCKED) && !context.getState().equals(BotState.BLOCKED)) {
-                context.setMainMenuHeader("Вы снова являетесь участником клуба. Выберите действие");
+                context.setMainMenuHeader("Вы снова являетесь участником клуба.\nВыберите действие");
                 showMainMenu(context, context.getState().getMainMenu(context));
             }
 
@@ -1190,6 +1212,8 @@ public enum BotState {
                         0,
                         context.getCurrentUser().getDefaultGym()
                 );
+
+                String textMessage;
                 if (schedules.isEmpty()) {
                     // Добавление времени в расписание
                     Schedule schedule = new Schedule();
@@ -1199,12 +1223,13 @@ public enum BotState {
                     schedule.setGym(context.getCurrentUser().getDefaultGym());
                     workoutTypeOptional.ifPresent(schedule::setWorkoutType);
                     context.scheduleRepo.save(schedule);
+                    textMessage = "Время добавлено в график";
                 } else {
-                    sendMessage(context, "Такое время уже есть в графике");
+                    textMessage ="Такое время уже есть в графике";
                 }
 
                 // Вызов редактора расписания на день и переход в главное меню
-                context.setMainMenuHeader("Время добавлено в график");
+                context.setMainMenuHeader(textMessage);
                 showMainMenu(context, ADMIN.getMainMenu(context));
                 editSchedule(context);
                 next = ADMIN;
@@ -1290,19 +1315,34 @@ public enum BotState {
     }
 
     protected void sendMessage(BotContext context, String text) {
-        sendMessage(context, text, context.getCurrentUser().getChatId());
+        sendMessage(context, text, context.getCurrentUser());
     }
 
-    protected void sendMessage(BotContext context, String text, long chatId) {
+    protected void sendMessage(BotContext context, String text, User user) {
+
+        // При выводе сообщения, счетчик сообщений пользователя необходимо сбросить
+        if (context.getCurrentUser().getId() != user.getId()) {
+            user.setLastMessageId(0);
+            context.userRepo.save(user);
+        }
 
         SendMessage message = new SendMessage();
-        message.setChatId(chatId);
+        message.setChatId(user.getChatId());
         message.setText(text);
         message.enableMarkdown(true);
         try {
             context.getBot().execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace();
+        }
+
+    }
+
+    protected void sendMessageToAdmin(BotContext context, String text) {
+
+        List<User> adminList = context.userRepo.findAllByIsAdmin(true);
+        for (User admin : adminList) {
+            sendMessage(context, text, admin);
         }
 
     }
@@ -1387,10 +1427,9 @@ public enum BotState {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(context.getDate());
 
-        StringBuilder headerText = new StringBuilder();
-        headerText.append("График на *")
-                .append(new SimpleDateFormat("EEEE d MMMM").format(context.getDate())).append("*\n")
-                .append(context.getCurrentUser().getDefaultGym().getName());
+        String headerText = "График на *" +
+                new SimpleDateFormat("EEEE d MMMM").format(context.getDate()) + "*\n" +
+                context.getCurrentUser().getDefaultGym().getName();
 
         List<ScheduleDay> scheduleDayList = context.scheduleService.getScheduleDayList(context);
 
@@ -1421,8 +1460,7 @@ public enum BotState {
             }
 
             keyboardButton.setText(text.toString());
-            keyboardButton.setCallbackData("delTime|gId=" + context.getGym().getId()
-                    + ";d=" + Utils.dateToString(context.getDate())
+            keyboardButton.setCallbackData("delTime|d=" + Utils.dateToString(context.getDate())
                     + ";t=" + Utils.timeToString(scheduleDay.getTime()));
             rowInline.add(keyboardButton);
 
@@ -1438,14 +1476,12 @@ public enum BotState {
         rowInline = new ArrayList<>();
         keyboardButton = new InlineKeyboardButton();
         keyboardButton.setText("   Добавить время   ");
-        keyboardButton.setCallbackData("addTime|gId=" + context.getGym().getId()
-                + ";d=" + Utils.dateToString(context.getDate()));
+        keyboardButton.setCallbackData("addTime|d=" + Utils.dateToString(context.getDate()));
         rowInline.add(keyboardButton);
 
         keyboardButton = new InlineKeyboardButton();
         keyboardButton.setText("« Назад");
-        keyboardButton.setCallbackData("showScheduleOnDate|gId=" + context.getGym().getId()
-                + ";d=" + Utils.dateToString(context.getDate()));
+        keyboardButton.setCallbackData("showScheduleOnDate|d=" + Utils.dateToString(context.getDate()));
         rowInline.add(keyboardButton);
 
         keyboardInline.add(rowInline);
@@ -1455,7 +1491,7 @@ public enum BotState {
         replyKeyboard.setKeyboard(keyboardInline);
 
         showInlineKeyboardMarkup(context.getBot(), context.getMessageId(), context.getCurrentUser().getChatId(),
-                headerText.toString(), replyKeyboard);
+                headerText, replyKeyboard);
 
     }
 

@@ -1,7 +1,6 @@
 package main.bot;
 
 import main.model.Gym;
-import main.model.Schedule;
 import main.model.User;
 import main.model.WorkoutType;
 import main.repository.*;
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class BotContext {
@@ -41,7 +42,7 @@ public class BotContext {
     private Date date;
     private Date time;
     private Gym gym;
-    private Schedule schedule;
+    private WorkoutType workoutType;
     private boolean notSure;
     private int addCount;
     private User user;
@@ -56,9 +57,9 @@ public class BotContext {
         this.update = update;
         messageId = 0;
         callbackData = "";
-        schedule = null;
+        workoutType = null;
         date = new Date();
-        time = new Date(0);
+        time = null;
         gym = currentUser.getDefaultGym();
         notSure = false;
         addCount = 0;
@@ -87,10 +88,6 @@ public class BotContext {
                 for (String arg : args) {
                     String[] keys = arg.split("=", 2);
                     switch (keys[0]) {
-                        case "sId":  // scheduleId
-                            scheduleRepo.findById(Integer.parseInt(keys[1])).ifPresent(value -> schedule = value);
-                            gym = schedule.getGym();
-                            break;
                         case "d":   // date
                             date = Utils.stringToDate(keys[1]);
                             break;
@@ -119,6 +116,17 @@ public class BotContext {
             } else {
                 callbackData = update.getCallbackQuery().getData();
             }
+
+            if (time != null) {
+                List<ScheduleDay> scheduleDayList = scheduleService.getScheduleDayList(this);
+                scheduleDayList = scheduleDayList.stream()
+                        .filter(s -> s.getTime().equals(time))
+                        .collect(Collectors.toList());
+                if (scheduleDayList.size() > 0) {
+                    workoutTypeRepo.findById(scheduleDayList.get(0).getWorkoutId()).ifPresent(wt -> workoutType = wt);
+                }
+            }
+
         }
 
     }
@@ -167,8 +175,8 @@ public class BotContext {
         this.gym = gym;
     }
 
-    public Schedule getSchedule() {
-        return schedule;
+    public WorkoutType getWorkoutType() {
+        return workoutType;
     }
 
     public boolean isNotSure() {
