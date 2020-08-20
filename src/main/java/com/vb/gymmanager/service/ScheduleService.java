@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,25 +27,25 @@ public class ScheduleService {
 
         String queryStr =
                 "SELECT * FROM (\n" +
-                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
+                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, CAST(MAX(CAST(COALESCE(ss.user_id = %1$d, false) AS INT)) AS BOOLEAN) AS subscribed, CAST(MAX(CAST(COALESCE(ss.user_id = %1$d AND ss.not_sure, false) AS INT)) AS BOOLEAN) AS notSure\n" +
                 "FROM schedule s\n" +
                 "JOIN (SELECT Max(date) AS date FROM schedule WHERE gym_id = %3$d AND date <= '%2$s' AND weekday = %4$d) AS max_date\n" +
                 "   ON s.date >= max_date.date\n" +
-                "LEFT JOIN subscription ss\n" +
+                "LEFT JOIN subscribe ss\n" +
                 "   ON (ss.date = '%2$s' AND s.time = ss.time AND s.gym_id = ss.gym_id)\n" +
-                "LEFT JOIN workout_type w\n" +
+                "LEFT JOIN workout_types w\n" +
                 "   ON s.workout_type_id = w.id\n" +
                 "WHERE s.gym_id = %3$d AND s.weekday = %4$d\n" +
-                "GROUP BY s.id, s.weekday, s.time\n" +
+                "GROUP BY s.id, s.weekday, s.time, w.id\n" +
                 "UNION\n" +
-                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, MAX(COALESCE(ss.user_id = %1$d, false)) AS subscribed, MAX(COALESCE(ss.user_id = %1$d AND ss.not_sure, false)) AS notSure\n" +
+                "SELECT s.id, s.weekday, s.time, w.id AS workoutId, w.code AS workoutCode, w.name AS workoutName, SUM(COALESCE(ss.count, 0)) AS count, CAST(MAX(CAST(COALESCE(ss.user_id = %1$d, false) AS INT)) AS BOOLEAN) AS subscribed, CAST(MAX(CAST(COALESCE(ss.user_id = %1$d AND ss.not_sure, false) AS INT)) AS BOOLEAN) AS notSure\n" +
                 "FROM schedule s\n" +
-                "LEFT JOIN subscription ss\n" +
+                "LEFT JOIN subscribe ss\n" +
                 "   ON (ss.date = '%2$s' AND s.time = ss.time AND s.gym_id = ss.gym_id)\n" +
-                "LEFT JOIN workout_type w\n" +
+                "LEFT JOIN workout_types w\n" +
                 "   ON s.workout_type_id = w.id\n" +
                 "WHERE s.gym_id = %3$d AND s.weekday = 0 AND s.date = '%2$s'\n" +
-                "GROUP BY s.id, s.weekday, s.time) AS t\n" +
+                "GROUP BY s.id, s.weekday, s.time, w.id) AS t\n" +
                 "ORDER BY t.time";
 
         queryStr = String.format(queryStr,
