@@ -3,6 +3,7 @@ package com.vb.gymmanager.model;
 import javax.persistence.*;
 
 @Entity
+@Table(name = "workout_types")
 public class WorkoutType {
 
     @Id

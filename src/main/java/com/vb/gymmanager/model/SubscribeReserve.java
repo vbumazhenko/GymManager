@@ -6,6 +6,7 @@ import java.sql.Date;
 import java.sql.Time;
 
 @Entity
+@Table(name = "subscribe_reserve")
 public class SubscribeReserve {
 
     @Id
