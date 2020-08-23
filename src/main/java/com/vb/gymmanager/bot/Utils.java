@@ -80,18 +80,6 @@ public class Utils {
 
     }
 
-    public static boolean notAccessSubscribe(BotContext context) {
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(context.getTime());
-
-        long endTimeWorkoutMillis = context.getDate().getTime()
-                + 3600000 * calendar.get(Calendar.HOUR_OF_DAY) + 60000 * calendar.get(Calendar.MINUTE)
-                + (long) (3600000 * context.getWorkoutType().getDuration());
-        return endTimeWorkoutMillis < System.currentTimeMillis();
-
-    }
-
     public static String getModifyCode(String code) {
 
         Map<String, String> letters = new HashMap<String, String>();

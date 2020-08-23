@@ -1,9 +1,11 @@
 package com.vb.gymmanager.service;
 
-import com.vb.gymmanager.bot.BotContext;
+import com.vb.gymmanager.bot.ChatBot;
 import com.vb.gymmanager.bot.Utils;
 import com.vb.gymmanager.bot.ScheduleDay;
 import com.vb.gymmanager.model.Schedule;
+import com.vb.gymmanager.repository.ScheduleRepo;
+import com.vb.gymmanager.repository.WorkoutTypeRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,16 @@ public class ScheduleService {
     @Autowired
     private ApplicationContext appContext;
 
-    public List<ScheduleDay> getScheduleDayList(BotContext context) {
+    @Autowired
+    private ChatBot bot;
+
+    @Autowired
+    private WorkoutTypeRepo workoutTypeRepo;
+
+    @Autowired
+    private ScheduleRepo scheduleRepo;
+
+    public List<ScheduleDay> getScheduleDayList() {
 
         List<ScheduleDay> scheduleDayList = new ArrayList<>();
         DataSource ds = appContext.getBean(DataSource.class);
@@ -49,10 +60,10 @@ public class ScheduleService {
                 "ORDER BY t.time";
 
         queryStr = String.format(queryStr,
-                context.getCurrentUser().getId(),
-                Utils.dateToString(context.getDate()),
-                context.getGym().getId(),
-                Utils.dayOfWeek(context.getDate())
+                bot.getUser().getId(),
+                Utils.dateToString(bot.getDate()),
+                bot.getGym().getId(),
+                Utils.dayOfWeek(bot.getDate())
         );
 
         try {
@@ -90,9 +101,9 @@ public class ScheduleService {
         }
     }
 
-    public void copyScheduleOnDay(BotContext context) {
+    public void copyScheduleOnDay() {
 
-        List<ScheduleDay> scheduleDayList = getScheduleDayList(context);
+        List<ScheduleDay> scheduleDayList = getScheduleDayList();
 
         List<Schedule> newScheduleList = new ArrayList<>();
 
@@ -105,15 +116,15 @@ public class ScheduleService {
 
             // В противном случае произведем копирование расписания на текущий день.
             Schedule newSchedule = new Schedule();
-            newSchedule.setDate(context.getDate());
+            newSchedule.setDate(bot.getDate());
             newSchedule.setTime(scheduleDay.getTime());
             newSchedule.setWeekday(0);
-            context.workoutTypeRepo.findById(scheduleDay.getWorkoutId()).ifPresent(newSchedule::setWorkoutType);
-            newSchedule.setGym(context.getCurrentUser().getDefaultGym());
+            workoutTypeRepo.findById(scheduleDay.getWorkoutId()).ifPresent(newSchedule::setWorkoutType);
+            newSchedule.setGym(bot.getUser().getDefaultGym());
             newScheduleList.add(newSchedule);
 
         }
-        context.scheduleRepo.saveAll(newScheduleList);
+        scheduleRepo.saveAll(newScheduleList);
 
     }
 
