@@ -9,6 +9,10 @@ import com.vb.gymmanager.repository.ScheduleRepo;
 import com.vb.gymmanager.repository.SubscriptionRepo;
 import com.vb.gymmanager.repository.UserRepo;
 import com.vb.gymmanager.service.ScheduleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
@@ -25,6 +29,10 @@ import java.util.stream.Collectors;
 
 @Component
 public class HandlerAdmin implements BotHandler {
+
+    public static final Logger LOG = LoggerFactory.getLogger(HandlerAdmin.class);
+    public static final Marker INFO_MARKER = MarkerFactory.getMarker("INFO");
+    public static final Marker ERROR_MARKER = MarkerFactory.getMarker("ERROR");
 
     private BotState next;
 
@@ -49,6 +57,8 @@ public class HandlerAdmin implements BotHandler {
     @Autowired
     private ScheduleService scheduleService;
 
+    private final int COUNT_ELEMENTS_ON_PAGE = 20;
+
     @Override
     public void enter() {
 
@@ -59,6 +69,7 @@ public class HandlerAdmin implements BotHandler {
                 bot.execute(answerCallbackQuery);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
+                LOG.error(ERROR_MARKER, e.getMessage());
             }
         }
 
@@ -333,24 +344,51 @@ public class HandlerAdmin implements BotHandler {
                 .sorted(Comparator.comparing(User::getName))
                 .collect(Collectors.toList());
 
-        int count = 0;
+        // Расчет количества страниц
+        int countUsers = userList.size();
+        int countPages = getCountPages(countUsers);
+
+        // Получение дапазона элементов в звависимости от выбранной страницы
+        if (userList.size() > 0) {
+            int fromIndex = COUNT_ELEMENTS_ON_PAGE * (bot.getPage() - 1);
+            int toIndex = Math.min(fromIndex + COUNT_ELEMENTS_ON_PAGE, userList.size());
+            userList = userList.subList(fromIndex, toIndex);
+        }
+
+        // Вывод списка пользователей
         for (User user : userList) {
             rowInline = new ArrayList<>();
             InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
             keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
+                    + ";p=" + bot.getPage()
                     + ";ulm=showWaitingUsers");
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
-            count++;
         }
 
+        // Кнопки перелистывания страниц
+        if (countPages > 1) {
+            rowInline = new ArrayList<>();
+            for (int i = 1; i <= countPages; i++) {
+                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
+                keyboardButton.setText(Integer.toString(i));
+                keyboardButton.setCallbackData("showUserList|p=" + i
+                        + ";ulm=showUserList");
+                rowInline.add(keyboardButton);
+            }
+            keyboardInline.add(rowInline);
+        }
+
+        // Вывод сформированного списка
         InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
         replyKeyboard.setKeyboard(keyboardInline);
 
         String text = bot.getUser().getDefaultGym().getName() + "\n" +
-                "Новые заявки (" + count + "):";
-
+                "Новые заявки (" + countUsers + "):";
+        if (countPages > 1) {
+            text += "\nСтраница " + bot.getPage();
+        }
         botMenu.showInlineKeyboardMarkup(text, replyKeyboard);
 
     }
@@ -371,25 +409,54 @@ public class HandlerAdmin implements BotHandler {
                     } else {
                         return o1.getName().compareTo(o2.getName());
                     }
-                }).collect(Collectors.toList());
+                })
+                .collect(Collectors.toList());
 
-        int count = 0;
+        // Расчет количества страниц
+        int countUsers = userList.size();
+        int countPages = getCountPages(countUsers);
+
+        // Получение дапазона элементов в звависимости от выбранной страницы
+        if (userList.size() > 0) {
+            int fromIndex = COUNT_ELEMENTS_ON_PAGE * (bot.getPage() - 1);
+            int toIndex = Math.min(fromIndex + COUNT_ELEMENTS_ON_PAGE, userList.size());
+            userList = userList.subList(fromIndex, toIndex);
+        }
+
+        // Вывод списка пользователей
         for (User user : userList) {
             rowInline = new ArrayList<>();
             InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
             keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
+                    + ";p=" + bot.getPage()
                     + ";ulm=showUserList");
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
-            count++;
         }
 
+        // Кнопки перелистывания страниц
+        if (countPages > 1) {
+            rowInline = new ArrayList<>();
+            for (int i = 1; i <= countPages; i++) {
+                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
+                keyboardButton.setText(Integer.toString(i));
+                keyboardButton.setCallbackData("showUserList|p=" + i
+                        + ";ulm=showUserList");
+                rowInline.add(keyboardButton);
+            }
+            keyboardInline.add(rowInline);
+        }
+
+        // Вывод сформированного списка
         InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
         replyKeyboard.setKeyboard(keyboardInline);
 
-        String text = bot.getUser().getDefaultGym().getName() + "\n" +
-                "Все участники (" + count + "):";
+        String text = bot.getUser().getDefaultGym().getName() + "\n"
+                + "Все участники (" + countUsers + "):";
+        if (countPages > 1) {
+            text += "\nСтраница " + bot.getPage();
+        }
 
         botMenu.showInlineKeyboardMarkup(text, replyKeyboard);
 
@@ -406,23 +473,51 @@ public class HandlerAdmin implements BotHandler {
                 .sorted(Comparator.comparing(User::getName))
                 .collect(Collectors.toList());
 
-        int count = 0;
+        // Расчет количества страниц
+        int countUsers = userList.size();
+        int countPages = getCountPages(countUsers);
+
+        // Получение дапазона элементов в звависимости от выбранной страницы
+        if (userList.size() > 0) {
+            int fromIndex = COUNT_ELEMENTS_ON_PAGE * (bot.getPage() - 1);
+            int toIndex = Math.min(fromIndex + COUNT_ELEMENTS_ON_PAGE, userList.size());
+            userList = userList.subList(fromIndex, toIndex);
+        }
+
+        // Вывод списка пользователей
         for (User user : userList) {
             rowInline = new ArrayList<>();
             InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
             keyboardButton.setText(user.getName() + (user.isAdmin() ? " (админ)" : ""));
             keyboardButton.setCallbackData("showUserData|uId=" + user.getId()
+                    + ";p=" + bot.getPage()
                     + ";ulm=showBlockedUsers");
             rowInline.add(keyboardButton);
             keyboardInline.add(rowInline);
-            count++;
         }
 
+        // Кнопки перелистывания страниц
+        if (countPages > 1) {
+            rowInline = new ArrayList<>();
+            for (int i = 1; i <= countPages; i++) {
+                InlineKeyboardButton keyboardButton = new InlineKeyboardButton();
+                keyboardButton.setText(Integer.toString(i));
+                keyboardButton.setCallbackData("showUserList|p=" + i
+                        + ";ulm=showUserList");
+                rowInline.add(keyboardButton);
+            }
+            keyboardInline.add(rowInline);
+        }
+
+        // Вывод сформированного списка
         InlineKeyboardMarkup replyKeyboard = new InlineKeyboardMarkup();
         replyKeyboard.setKeyboard(keyboardInline);
 
-        String text = bot.getUser().getDefaultGym().getName() + "\n" +
-                "Заблокированные (" + count + "):";
+        String text = bot.getUser().getDefaultGym().getName() + "\n"
+                + "Заблокированные (" + countUsers + "):";
+        if (countPages > 1) {
+            text += "\nСтраница " + bot.getPage();
+        }
 
         botMenu.showInlineKeyboardMarkup(text, replyKeyboard);
 
@@ -517,7 +612,7 @@ public class HandlerAdmin implements BotHandler {
         rowInline = new ArrayList<>();
         keyboardButton = new InlineKeyboardButton();
         keyboardButton.setText("« Назад");
-        keyboardButton.setCallbackData(bot.getUserListMode());
+        keyboardButton.setCallbackData(bot.getUserListMode() + "|p=" + bot.getPage());
         rowInline.add(keyboardButton);
         keyboardInline.add(rowInline);
 
@@ -704,6 +799,16 @@ public class HandlerAdmin implements BotHandler {
 
         botMenu.showInlineKeyboardMarkup(headerText, replyKeyboard);
 
+    }
+
+    private int getCountPages(int size) {
+        int countPages = 1;
+        if (size % COUNT_ELEMENTS_ON_PAGE == 0) {
+            countPages = size / COUNT_ELEMENTS_ON_PAGE;
+        } else {
+            countPages = size / COUNT_ELEMENTS_ON_PAGE + 1;
+        }
+        return countPages;
     }
 
 }

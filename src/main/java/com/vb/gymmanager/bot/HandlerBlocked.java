@@ -17,7 +17,7 @@ public class HandlerBlocked implements BotHandler {
 
     @Override
     public BotState nextState() {
-        return null;
+        return BotState.BLOCKED;
     }
 
 }

@@ -6,11 +6,13 @@ import com.vb.gymmanager.repository.SubscribeReserveRepo;
 import com.vb.gymmanager.repository.SubscriptionRepo;
 import com.vb.gymmanager.service.ScheduleService;
 import com.vb.gymmanager.service.SubscribeReserveService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -23,6 +25,10 @@ import java.util.*;
 
 @Component
 public class HandlerActive implements BotHandler {
+
+    public static final Logger LOG = LoggerFactory.getLogger(HandlerActive.class);
+    public static final Marker INFO_MARKER = MarkerFactory.getMarker("INFO");
+    public static final Marker ERROR_MARKER = MarkerFactory.getMarker("ERROR");
 
     @Autowired
     private ChatBot bot;
@@ -54,6 +60,7 @@ public class HandlerActive implements BotHandler {
                 bot.execute(answerCallbackQuery);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
+                LOG.error(ERROR_MARKER, e.getMessage());
             }
         }
 
@@ -362,36 +369,38 @@ public class HandlerActive implements BotHandler {
 
         if (subscriptionOptional.isEmpty()) {
 
-            List<Subscription> subscriptions = subscriptionRepo.findAllByDateAndTimeAndGym(
-                    new java.sql.Date(bot.getDate().getTime()),
-                    new java.sql.Time(bot.getTime().getTime()),
-                    bot.getGym()
-            );
+// TODO: 23.02.2021 Новая разработка
 
-            if (subscriptions.size() >= bot.getWorkoutType().getMaxUsers()) {
-
-                // Превышение количества человек. Их ставим в очередь
-                SubscribeReserve subscribeReserve = new SubscribeReserve();
-                subscribeReserve.setDate(new java.sql.Date(bot.getDate().getTime()));
-                subscribeReserve.setTime(new java.sql.Time(bot.getTime().getTime()));
-                subscribeReserve.setGym(bot.getGym());
-                subscribeReserve.setUser(bot.getUser());
-                subscribeReserve.setNotSure(bot.isNotSure());
-                if (!bot.isNotSure()) {
-                    subscribeReserve.setCount(1);
-                }
-                subscribeReserve.setNumber(subscribeReserveService.getLastOrder() + 1);
-                subscribeReserveRepo.save(subscribeReserve);
-                result = true;
-
-                if (Utils.dateToString(bot.getDate()).equals(Utils.dateToString(new Date()))) {
-                    String text = "РЕЗЕРВ " + "[" + bot.getUser().getName() + "](" +
-                            "tg://user?id=" + bot.getUser().getChatId() + ") на *" +
-                            Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
-                    bot.sendMessageToAdmin(text);
-                }
-
-            } else {
+//            List<Subscription> subscriptions = subscriptionRepo.findAllByDateAndTimeAndGym(
+//                    new java.sql.Date(bot.getDate().getTime()),
+//                    new java.sql.Time(bot.getTime().getTime()),
+//                    bot.getGym()
+//            );
+//
+//            if (subscriptions.size() >= bot.getWorkoutType().getMaxUsers()) {
+//
+//                // Превышение количества человек. Их ставим в очередь
+//                SubscribeReserve subscribeReserve = new SubscribeReserve();
+//                subscribeReserve.setDate(new java.sql.Date(bot.getDate().getTime()));
+//                subscribeReserve.setTime(new java.sql.Time(bot.getTime().getTime()));
+//                subscribeReserve.setGym(bot.getGym());
+//                subscribeReserve.setUser(bot.getUser());
+//                subscribeReserve.setNotSure(bot.isNotSure());
+//                if (!bot.isNotSure()) {
+//                    subscribeReserve.setCount(1);
+//                }
+//                subscribeReserve.setNumber(subscribeReserveService.getLastOrder() + 1);
+//                subscribeReserveRepo.save(subscribeReserve);
+//                result = true;
+//
+//                if (Utils.dateToString(bot.getDate()).equals(Utils.dateToString(new Date()))) {
+//                    String text = "РЕЗЕРВ " + "[" + bot.getUser().getName() + "](" +
+//                            "tg://user?id=" + bot.getUser().getChatId() + ") на *" +
+//                            Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
+//                    bot.sendMessageToAdmin(text);
+//                }
+//
+//            } else {
 
                 // Запись
                 Subscription subscribe = new Subscription();
@@ -412,7 +421,12 @@ public class HandlerActive implements BotHandler {
                             Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
                     bot.sendMessageToAdmin(text);
                 }
-            }
+                String logMessage = "ЗАПИСЬ " + bot.getUser().getName() + " на "
+                        + Utils.dateFormat(bot.getDate(), "dd.MM.yyyy") + " "
+                        + Utils.timeToString(bot.getTime()) + " "
+                        + bot.getGym().getName();
+                LOG.info(INFO_MARKER, logMessage);
+//            }
 
         } else {
             Subscription subscribe = subscriptionOptional.get();
@@ -466,6 +480,11 @@ public class HandlerActive implements BotHandler {
                         Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
                 bot.sendMessageToAdmin(text);
             }
+            String logMessage = "ОТМЕНА ЗАПИСИ " + bot.getUser().getName() + " на "
+                    + Utils.dateFormat(bot.getDate(), "dd.MM.yyyy") + " "
+                    + Utils.timeToString(bot.getTime()) + " "
+                    + bot.getGym().getName();
+            LOG.info(INFO_MARKER, logMessage);
 
         }
 

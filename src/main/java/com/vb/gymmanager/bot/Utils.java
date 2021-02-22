@@ -27,6 +27,12 @@ public class Utils {
 
     }
 
+    public static String dateFormat(Date date, String pattern) {
+
+        return new SimpleDateFormat(pattern).format(date);
+
+    }
+
     public static Date stringToTime(String timeStr) {
 
         Date time = null;

@@ -4,6 +4,10 @@ import com.vb.gymmanager.model.*;
 import com.vb.gymmanager.repository.*;
 import com.vb.gymmanager.service.GymService;
 import com.vb.gymmanager.service.ScheduleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -19,6 +23,10 @@ import java.util.stream.Collectors;
 @Component
 public class ChatBot extends TelegramLongPollingBot {
 
+    public static final Logger LOG = LoggerFactory.getLogger(ChatBot.class);
+    public static final Marker INFO_MARKER = MarkerFactory.getMarker("INFO");
+    public static final Marker ERROR_MARKER = MarkerFactory.getMarker("ERROR");
+
     private User user;
     private Update update;
     private int messageId;
@@ -33,6 +41,7 @@ public class ChatBot extends TelegramLongPollingBot {
     private BotState state;
     private String userListMode;
     private String mainMenuHeader;
+    private int page;
 
     @Value("${bot.username}")
     private String botUserName;
@@ -169,6 +178,7 @@ public class ChatBot extends TelegramLongPollingBot {
         state = null;
         userListMode = "";
         mainMenuHeader = "Выберите действие";
+        page = 1;
 
         if (update.hasMessage()) {
             if (update.getMessage().getMessageId() > user.getLastMessageId()) {
@@ -213,6 +223,9 @@ public class ChatBot extends TelegramLongPollingBot {
                             break;
                         case "ulm":
                             userListMode = keys[1];
+                            break;
+                        case "p":
+                            page = Integer.parseInt(keys[1]);
                     }
                 }
             } else {
@@ -249,6 +262,7 @@ public class ChatBot extends TelegramLongPollingBot {
             execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace();
+            LOG.error(ERROR_MARKER, e.getMessage());
         }
 
     }
@@ -272,6 +286,10 @@ public class ChatBot extends TelegramLongPollingBot {
 
     public User getUser() {
         return user;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
     }
 
     public Date getDate() {
@@ -328,6 +346,10 @@ public class ChatBot extends TelegramLongPollingBot {
 
     public BotState getState() {
         return state;
+    }
+
+    public int getPage() {
+        return page;
     }
 
 }
