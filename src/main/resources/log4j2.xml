@@ -2,16 +2,16 @@
 <Configuration>
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level %-40c{1.} - %msm%n" />
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level %-40c{1.} - %msg%n" />
         </Console>
         <File name="fileInfo" filename="./log/info.log">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level - %msm%n" />
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level - %msg%n" />
             <Filters>
                 <MarkerFilter marker="INFO"/>
             </Filters>
         </File>
         <File name="fileError" filename="./log/error.log">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level - %msm%n" />
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5level - %msg%n" />
             <Filters>
                 <MarkerFilter marker="ERROR"/>
             </Filters>
@@ -20,8 +20,8 @@
     <Loggers>
         <Root level="info">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="fileError"/>
             <AppenderRef ref="fileInfo"/>
+            <AppenderRef ref="fileError"/>
         </Root>
     </Loggers>
 </Configuration>

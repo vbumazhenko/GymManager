@@ -123,17 +123,27 @@ public class ChatBot extends TelegramLongPollingBot {
             botState = BotState.getInitialState();
             user = new User();
             user.setChatId(chatId);
-            user.setState(state);
+            user.setState(botState);
             user.setDefaultGym(gymService.getDefaultGym());
             user.setRegDate(new java.sql.Date(new Date().getTime()));
             userRepo.save(user);
-            getHandler(state).enter();
+            getHandler(botState).enter();
         } else {
             user = userRec.get();
             botState = user.getState();
         }
 
         setContext();
+
+        if (update.hasMessage()) {
+            String logMessage = "(state=" + botState + ",chatId=" + chatId + "), "
+                    +  update.getMessage().getText();
+            LOG.info(INFO_MARKER, logMessage);
+        } else if (update.hasCallbackQuery()){
+            String logMessage = "(state=" + botState + ",chatId=" + chatId + "), "
+                    + update.getCallbackQuery().getData();
+            LOG.info(INFO_MARKER, logMessage);
+        }
 
         BotHandler botHandler = getHandler(botState);
         botHandler.handleInput();

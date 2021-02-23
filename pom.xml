@@ -8,15 +8,27 @@
 		<version>2.1.7.RELEASE</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.vb</groupId>
-	<artifactId>GymManager</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+
+	<groupId>com.pro-vb</groupId>
+	<artifactId>gymmanager</artifactId>
+	<version>0.1.1</version>
 	<name>GymManager</name>
 	<description>Manager for gym</description>
 
 	<properties>
 		<java.version>11</java.version>
 	</properties>
+
+	<build>
+		<finalName>gymmanager</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>2.1.7.RELEASE</version>
+			</plugin>
+		</plugins>
+	</build>
 
 	<dependencies>
 		<dependency>
@@ -60,14 +72,4 @@
 			<version>4.4.0.2</version>
 		</dependency>
 	</dependencies>
-
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-
 </project>

@@ -421,7 +421,9 @@ public class HandlerActive implements BotHandler {
                             Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
                     bot.sendMessageToAdmin(text);
                 }
-                String logMessage = "ЗАПИСЬ " + bot.getUser().getName() + " на "
+                String logMessage = "(state=ACTIVE,userId=" + bot.getUser().getChatId() + "), "
+                        + "ЗАПИСЬ "
+                        + bot.getUser().getName() + " на "
                         + Utils.dateFormat(bot.getDate(), "dd.MM.yyyy") + " "
                         + Utils.timeToString(bot.getTime()) + " "
                         + bot.getGym().getName();
@@ -480,7 +482,9 @@ public class HandlerActive implements BotHandler {
                         Utils.timeToString(bot.getTime()) + "*\n" + bot.getGym().getName();
                 bot.sendMessageToAdmin(text);
             }
-            String logMessage = "ОТМЕНА ЗАПИСИ " + bot.getUser().getName() + " на "
+            String logMessage = "(state=ACTIVE,userId=" + bot.getUser().getChatId() + "), "
+                    + "ОТМЕНА ЗАПИСИ "
+                    + bot.getUser().getName() + " на "
                     + Utils.dateFormat(bot.getDate(), "dd.MM.yyyy") + " "
                     + Utils.timeToString(bot.getTime()) + " "
                     + bot.getGym().getName();

@@ -57,7 +57,7 @@ public class HandlerAdmin implements BotHandler {
     @Autowired
     private ScheduleService scheduleService;
 
-    private final int COUNT_ELEMENTS_ON_PAGE = 20;
+    private final int COUNT_ELEMENTS_ON_PAGE = 30;
 
     @Override
     public void enter() {
