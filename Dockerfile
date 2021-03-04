@@ -1,5 +1,6 @@
 FROM bellsoft/liberica-openjdk-alpine:11
 RUN apk add tzdata
+ENV TZ=Asia/Krasnoyarsk
 WORKDIR /usr/src/gymmanager/
 COPY ./target/gymmanager.jar .
 CMD java \

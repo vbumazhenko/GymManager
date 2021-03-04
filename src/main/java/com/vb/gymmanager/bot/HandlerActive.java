@@ -30,6 +30,8 @@ public class HandlerActive implements BotHandler {
     public static final Marker INFO_MARKER = MarkerFactory.getMarker("INFO");
     public static final Marker ERROR_MARKER = MarkerFactory.getMarker("ERROR");
 
+    public static final Locale LOCALE = new Locale("ru", "RU");
+
     @Autowired
     private ChatBot bot;
 
@@ -139,7 +141,7 @@ public class HandlerActive implements BotHandler {
         calendar.setTime(bot.getDate());
 
         String headerText = "График на *" +
-                new SimpleDateFormat("EEEE d MMMM").format(bot.getDate()) + "*\n" +
+                new SimpleDateFormat("EEEE d MMMM", LOCALE).format(bot.getDate()) + "*\n" +
                 bot.getUser().getDefaultGym().getName();
 
         List<ScheduleDay> scheduleDayList = scheduleService.getScheduleDayList();
@@ -236,9 +238,9 @@ public class HandlerActive implements BotHandler {
                 bot.getGym());
 
         StringBuilder text = new StringBuilder();
-        String weekDay = new SimpleDateFormat("EEEE ").format(bot.getDate());
+        String weekDay = new SimpleDateFormat("EEEE ", LOCALE).format(bot.getDate());
         text.append("*").append(weekDay.substring(0, 1).toUpperCase()).append(weekDay.substring(1))
-                .append(new SimpleDateFormat("d MMMM yyyy").format(bot.getDate()))
+                .append(new SimpleDateFormat("d MMMM yyyy", LOCALE).format(bot.getDate()))
                 .append(" г.*\n")
                 .append(bot.getWorkoutType().getName()).append(" на ")
                 .append(Utils.timeToString(bot.getTime()))
