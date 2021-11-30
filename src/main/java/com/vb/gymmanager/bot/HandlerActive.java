@@ -293,6 +293,14 @@ public class HandlerActive implements BotHandler {
             }
         }
 
+        // Превышение лимита
+        int userCount = subscriptions.stream().mapToInt(Subscription::getCount).sum()
+                + subscriptions.stream().mapToInt(i -> i.isNotSure() ? 1 : 0).sum();
+        if (userCount >= bot.getWorkoutType().getMaxUsers()
+                && bot.getWorkoutType().getMaxUsers() > 0) {
+            text.append("Группа набрана. Запись невозможна!\n");
+        }
+
         List<List<InlineKeyboardButton>> keyboardInline = new ArrayList<>();
 
         // Первый ряд кнопок
@@ -373,14 +381,19 @@ public class HandlerActive implements BotHandler {
 
 // TODO: 23.02.2021 Новая разработка
 
-//            List<Subscription> subscriptions = subscriptionRepo.findAllByDateAndTimeAndGym(
-//                    new java.sql.Date(bot.getDate().getTime()),
-//                    new java.sql.Time(bot.getTime().getTime()),
-//                    bot.getGym()
-//            );
-//
-//            if (subscriptions.size() >= bot.getWorkoutType().getMaxUsers()) {
-//
+            List<Subscription> subscriptions = subscriptionRepo.findAllByDateAndTimeAndGym(
+                    new java.sql.Date(bot.getDate().getTime()),
+                    new java.sql.Time(bot.getTime().getTime()),
+                    bot.getGym()
+            );
+
+            int userCount = subscriptions.stream().mapToInt(Subscription::getCount).sum()
+                    + subscriptions.stream().mapToInt(i -> i.isNotSure() ? 1 : 0).sum();
+            if (userCount >= bot.getWorkoutType().getMaxUsers()
+                    && bot.getWorkoutType().getMaxUsers() > 0) {
+                // Достигнут предел, запрещаем запись
+
+
 //                // Превышение количества человек. Их ставим в очередь
 //                SubscribeReserve subscribeReserve = new SubscribeReserve();
 //                subscribeReserve.setDate(new java.sql.Date(bot.getDate().getTime()));
@@ -402,7 +415,7 @@ public class HandlerActive implements BotHandler {
 //                    bot.sendMessageToAdmin(text);
 //                }
 //
-//            } else {
+            } else {
 
                 // Запись
                 Subscription subscribe = new Subscription();
@@ -430,7 +443,7 @@ public class HandlerActive implements BotHandler {
                         + Utils.timeToString(bot.getTime()) + " "
                         + bot.getGym().getName();
                 LOG.info(INFO_MARKER, logMessage);
-//            }
+            }
 
         } else {
             Subscription subscribe = subscriptionOptional.get();
@@ -447,7 +460,6 @@ public class HandlerActive implements BotHandler {
         }
 
         return result;
-
     }
 
     private boolean unSubscribeUser() {
@@ -512,6 +524,21 @@ public class HandlerActive implements BotHandler {
         }
 
         boolean result = false;
+
+        // Проверка превышения лимита
+        List<Subscription> subscriptions = subscriptionRepo.findAllByDateAndTimeAndGym(
+                new java.sql.Date(bot.getDate().getTime()),
+                new java.sql.Time(bot.getTime().getTime()),
+                bot.getGym()
+        );
+
+        int userCount = subscriptions.stream().mapToInt(Subscription::getCount).sum()
+                + subscriptions.stream().mapToInt(i -> i.isNotSure() ? 1 : 0).sum();
+        if (userCount >= bot.getWorkoutType().getMaxUsers()
+                && bot.getWorkoutType().getMaxUsers() > 0
+                && bot.getAddCount() > 0) {
+            return false;
+        }
 
         Optional<Subscription> subscriptionOptional = subscriptionRepo.findByDateAndTimeAndGymAndUser(
                 new java.sql.Date(bot.getDate().getTime()),
