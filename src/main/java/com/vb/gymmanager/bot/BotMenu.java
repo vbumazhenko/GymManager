@@ -28,7 +28,7 @@ public class BotMenu {
         }
 
         SendMessage message = new SendMessage();
-        message.setChatId(user.getChatId());
+        message.setChatId(user.getChatId().toString());
         message.setText(bot.getMainMenuHeader());
         message.setReplyMarkup(keyboard);
 
@@ -47,7 +47,7 @@ public class BotMenu {
             EditMessageText message = new EditMessageText();
             message.enableMarkdown(true);
             message.setMessageId(bot.getMessageId());
-            message.setChatId(bot.getUser().getChatId());
+            message.setChatId(bot.getUser().getChatId().toString());
             message.setText(text);
             message.setReplyMarkup(replyKeyboard);
             try {
@@ -62,7 +62,7 @@ public class BotMenu {
 
             SendMessage message = new SendMessage();
             message.enableMarkdown(true);
-            message.setChatId(bot.getUser().getChatId());
+            message.setChatId(bot.getUser().getChatId().toString());
             message.setText(text);
             message.setReplyMarkup(replyKeyboard);
             try {

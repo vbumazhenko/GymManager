@@ -265,7 +265,7 @@ public class ChatBot extends TelegramLongPollingBot {
         }
 
         SendMessage message = new SendMessage();
-        message.setChatId(user.getChatId());
+        message.setChatId(user.getChatId().toString());
         message.setText(text);
         message.enableMarkdown(true);
         try {
